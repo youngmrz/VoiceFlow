@@ -1,6 +1,7 @@
 import pyperclip
 import pyautogui
 import time
+from services.logger import debug, info
 
 
 class ClipboardService:
@@ -16,7 +17,7 @@ class ClipboardService:
 
     def paste_at_cursor(self, text: str):
         """Copy text to clipboard and paste at current cursor position."""
-        print(f"[VoiceFlow] paste_at_cursor called with text: '{text}'")
+        debug(f"paste_at_cursor called with text: '{text}'")
 
         # Save current clipboard content
         try:
@@ -26,15 +27,15 @@ class ClipboardService:
 
         # Copy our text
         pyperclip.copy(text)
-        print("[VoiceFlow] Text copied to clipboard")
+        debug("Text copied to clipboard")
 
         # Small delay to ensure clipboard is updated
         time.sleep(0.1)
 
         # Simulate Ctrl+V
-        print("[VoiceFlow] Simulating Ctrl+V...")
+        debug("Simulating Ctrl+V...")
         pyautogui.hotkey('ctrl', 'v')
-        print("[VoiceFlow] Paste command sent")
+        debug("Paste command sent")
 
         # Small delay before restoring
         time.sleep(0.1)

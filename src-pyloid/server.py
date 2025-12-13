@@ -1,16 +1,24 @@
 from pyloid.rpc import PyloidRPC, RPCContext
 from app_controller import get_controller
+from services.logger import debug
 
 server = PyloidRPC()
 
 # Callbacks that main.py will register
 _on_onboarding_complete = None
+_on_data_reset = None
 
 
 def register_onboarding_complete_callback(callback):
     """Register callback to be called when onboarding completes."""
     global _on_onboarding_complete
     _on_onboarding_complete = callback
+
+
+def register_data_reset_callback(callback):
+    """Register callback to be called when data is reset."""
+    global _on_data_reset
+    _on_data_reset = callback
 
 
 @server.method()
@@ -46,10 +54,15 @@ async def update_settings(
     if microphone is not None:
         kwargs["microphone"] = microphone
 
+    # Check if onboarding was already complete before this update
+    old_settings = controller.get_settings()
+    was_onboarding_complete = old_settings.get("onboardingComplete", False)
+
     result = controller.update_settings(**kwargs)
 
-    # If onboarding just completed, trigger the callback to show popup
-    if onboardingComplete is True and _on_onboarding_complete:
+    # If onboarding JUST NOW completed (was false, now true), trigger the callback
+    if onboardingComplete is True and not was_onboarding_complete and _on_onboarding_complete:
+        debug("Onboarding just completed - triggering popup initialization")
         _on_onboarding_complete()
 
     return result
@@ -71,7 +84,7 @@ async def get_history(limit: int = 100, offset: int = 0, search: str = None):
 async def get_stats():
     controller = get_controller()
     stats = controller.get_stats()
-    print(f"[VoiceFlow] get_stats returning: {stats}")
+    debug(f"get_stats returning: {stats}")
     return stats
 
 
@@ -126,4 +139,15 @@ async def set_popup_enabled(enabled: bool):
     """Enable or disable the popup (used during onboarding)."""
     controller = get_controller()
     controller.set_popup_enabled(enabled)
+    return {"success": True}
+
+
+@server.method()
+async def reset_all_data():
+    """Reset all user data and return to onboarding state."""
+    controller = get_controller()
+    controller.reset_all_data()
+    # Trigger callback to hide popup and show main window
+    if _on_data_reset:
+        _on_data_reset()
     return {"success": True}

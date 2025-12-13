@@ -3,6 +3,7 @@ import sounddevice as sd
 from typing import Optional, Callable
 import threading
 import queue
+from services.logger import debug, info, warning
 
 
 class AudioService:
@@ -21,7 +22,7 @@ class AudioService:
     def set_device(self, device_id: Optional[int]):
         """Set the input device to use. None for default."""
         self._device_id = device_id
-        print(f"[VoiceFlow] Audio device set to: {device_id}")
+        info(f"Audio device set to: {device_id}")
 
     def set_amplitude_callback(self, callback: Callable[[float], None]):
         """Set callback to receive amplitude values for visualization."""
@@ -29,7 +30,7 @@ class AudioService:
 
     def _audio_callback(self, indata, frames, time, status):
         if status:
-            print(f"Audio status: {status}")
+            warning(f"Audio status: {status}")
 
         # Copy audio data
         audio_chunk = indata.copy().flatten()
@@ -54,7 +55,7 @@ class AudioService:
             except queue.Empty:
                 break
 
-        print(f"[VoiceFlow] Starting recording with device: {self._device_id}")
+        info(f"Starting recording with device: {self._device_id}")
         self._stream = sd.InputStream(
             samplerate=self.SAMPLE_RATE,
             channels=self.CHANNELS,
@@ -64,7 +65,7 @@ class AudioService:
             device=self._device_id,
         )
         self._stream.start()
-        print("[VoiceFlow] Recording started")
+        debug("Recording started")
 
     def stop_recording(self) -> np.ndarray:
         if not self._recording:

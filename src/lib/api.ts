@@ -53,4 +53,8 @@ export const api = {
   async setPopupEnabled(enabled: boolean): Promise<void> {
     await rpc.call("set_popup_enabled", { enabled });
   },
+
+  async resetAllData(): Promise<void> {
+    await rpc.call("reset_all_data");
+  },
 };

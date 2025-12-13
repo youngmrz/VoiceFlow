@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 import json
+from services.logger import debug
 
 
 class DatabaseService:
@@ -167,8 +168,23 @@ class DatabaseService:
             "totalCharacters": int(row["total_characters"]),
             "streakDays": streak,
         }
-        print(f"[VoiceFlow] Database get_stats: {result}")
+        debug(f"Database get_stats: {result}")
         return result
+
+    def reset_all_data(self):
+        """Delete all data and reset to fresh state."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        # Clear all history
+        cursor.execute("DELETE FROM history")
+
+        # Clear all settings (will use defaults on next load)
+        cursor.execute("DELETE FROM settings")
+
+        conn.commit()
+        conn.close()
+        debug("All data has been reset")
 
     def _calculate_streak(self, days: list) -> int:
         """Calculate consecutive days streak from list of date strings."""

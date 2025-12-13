@@ -10,9 +10,20 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Globe, Mic, Cpu, Zap, Clock, Palette, FolderOpen } from "lucide-react";
+import { Globe, Mic, Cpu, Zap, Clock, Palette, FolderOpen, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Settings, Options } from "@/lib/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function SettingsTab() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -304,6 +315,62 @@ export function SettingsTab() {
                     <FolderOpen className="w-4 h-4" />
                     Open Data Folder
                 </button>
+            </CardContent>
+          </Card>
+
+          {/* Delete All Data */}
+          <Card className="border-none shadow-sm hover:shadow-md transition-shadow border-destructive/20">
+            <CardHeader className="pb-3 flex flex-row items-center gap-4 space-y-0">
+                <div className="p-2 bg-destructive/10 rounded-lg">
+                    <Trash2 className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                    <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+                    <CardDescription>Permanently delete all data</CardDescription>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <button
+                            className="w-full flex items-center justify-center gap-2 h-11 rounded-lg border-2 border-dashed border-destructive/30 hover:border-destructive hover:bg-destructive/5 transition-all text-sm font-medium text-destructive/70 hover:text-destructive"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete All Data
+                        </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete all your transcription history, settings, and preferences.
+                                You will need to complete the onboarding process again. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={async () => {
+                                    try {
+                                        await api.resetAllData();
+                                        toast.success("All data deleted - returning to setup");
+                                        // Reload - the router will redirect to onboarding since onboardingComplete is now false
+                                        setTimeout(() => {
+                                            window.location.hash = "/";
+                                            window.location.reload();
+                                        }, 500);
+                                    } catch (error) {
+                                        console.error("Failed to delete data:", error);
+                                        toast.error("Failed to delete data");
+                                    }
+                                }}
+                            >
+                                Delete Everything
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardContent>
           </Card>
       </div>

@@ -9,6 +9,7 @@ from services.audio import AudioService
 from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
+from services.logger import info, error, debug, warning, exception
 
 
 class AppController:
@@ -70,12 +71,12 @@ class AppController:
         def load_model():
             self._model_loading = True
             try:
-                print(f"[VoiceFlow] Loading model: {settings.model}...")
+                info(f"Loading model: {settings.model}...")
                 self.transcription_service.load_model(settings.model)
                 self._model_loaded = True
-                print(f"[VoiceFlow] Model loaded successfully!")
+                info("Model loaded successfully!")
             except Exception as e:
-                print(f"[VoiceFlow] Failed to load model: {e}")
+                exception(f"Failed to load model: {e}")
                 if self._on_error:
                     self._on_error(f"Failed to load model: {e}")
             finally:
@@ -98,7 +99,7 @@ class AppController:
         """Called when hotkey is pressed."""
         # Don't activate during onboarding
         if not self._popup_enabled:
-            print("[VoiceFlow] Hotkey ignored - popup disabled (onboarding)")
+            debug("Hotkey ignored - popup disabled (onboarding)")
             return
 
         if self._on_recording_start:
@@ -114,10 +115,10 @@ class AppController:
         audio = self.audio_service.stop_recording()
 
         if len(audio) == 0:
-            print("[VoiceFlow] No audio recorded")
+            warning("No audio recorded")
             return
 
-        print(f"[VoiceFlow] Recorded {len(audio)} samples")
+        info(f"Recorded {len(audio)} samples")
 
         # Transcribe in background
         def transcribe():
@@ -126,29 +127,33 @@ class AppController:
                 wait_time = 0
                 while not self._model_loaded and wait_time < 30:
                     if not self._model_loading:
-                        print("[VoiceFlow] Model not loaded and not loading, skipping transcription")
+                        warning("Model not loaded and not loading, skipping transcription")
+                        if self._on_transcription_complete:
+                            self._on_transcription_complete("")
                         return
-                    print(f"[VoiceFlow] Waiting for model to load... ({wait_time}s)")
+                    info(f"Waiting for model to load... ({wait_time}s)")
                     time.sleep(1)
                     wait_time += 1
 
                 if not self._model_loaded:
-                    print("[VoiceFlow] Model load timeout, skipping transcription")
+                    error("Model load timeout, skipping transcription")
+                    if self._on_transcription_complete:
+                        self._on_transcription_complete("")
                     return
 
                 settings = self.settings_service.get_settings()
-                print(f"[VoiceFlow] Transcribing with language: {settings.language}")
+                info(f"Transcribing with language: {settings.language}")
 
                 text = self.transcription_service.transcribe(
                     audio,
                     language=settings.language,
                 )
 
-                print(f"[VoiceFlow] Transcription result: '{text}'")
+                info(f"Transcription result: '{text}'")
 
                 if text:
                     # Paste at cursor
-                    print("[VoiceFlow] Pasting text at cursor...")
+                    info("Pasting text at cursor...")
                     self.clipboard_service.paste_at_cursor(text)
 
                     # Save to history
@@ -157,14 +162,17 @@ class AppController:
                     if self._on_transcription_complete:
                         self._on_transcription_complete(text)
                 else:
-                    print("[VoiceFlow] No text transcribed (empty result)")
+                    warning("No text transcribed (empty result)")
+                    if self._on_transcription_complete:
+                        self._on_transcription_complete("")
 
             except Exception as e:
-                print(f"[VoiceFlow] Transcription error: {e}")
-                import traceback
-                traceback.print_exc()
+                exception(f"Transcription error: {e}")
                 if self._on_error:
                     self._on_error(f"Transcription failed: {e}")
+                # Still notify completion to reset UI state
+                if self._on_transcription_complete:
+                    self._on_transcription_complete("")
 
         threading.Thread(target=transcribe, daemon=True).start()
 
@@ -187,7 +195,7 @@ class AppController:
         }
 
     def update_settings(self, **kwargs) -> dict:
-        print(f"[VoiceFlow] update_settings called with: {kwargs}")
+        debug(f"update_settings called with: {kwargs}")
         # Convert camelCase to snake_case
         mapped = {}
         if "autoStart" in kwargs:
@@ -198,7 +206,7 @@ class AppController:
             if key in kwargs:
                 mapped[key] = kwargs[key]
 
-        print(f"[VoiceFlow] Mapped settings: {mapped}")
+        debug(f"Mapped settings: {mapped}")
         settings = self.settings_service.update_settings(**mapped)
 
         # Reload model if changed
@@ -211,7 +219,7 @@ class AppController:
         if "microphone" in mapped:
             mic_id = mapped["microphone"] if mapped["microphone"] >= 0 else None
             self.audio_service.set_device(mic_id)
-            print(f"[VoiceFlow] Microphone updated to: {mic_id}")
+            info(f"Microphone updated to: {mic_id}")
 
         return self.get_settings()
 
@@ -237,31 +245,31 @@ class AppController:
 
     def stop_recording(self):
         """Manually stop recording (called from stop button)."""
-        print("[VoiceFlow] Manual stop_recording called")
+        debug("Manual stop_recording called")
         self.hotkey_service.force_deactivate()
 
     def start_test_recording(self):
         """Start recording for onboarding test (no hotkey needed)."""
-        print("[VoiceFlow] Starting test recording")
+        debug("Starting test recording")
         self.audio_service.start_recording()
 
     def stop_test_recording(self) -> dict:
         """Stop test recording, transcribe, and return result (no paste/history)."""
-        print("[VoiceFlow] Stopping test recording")
+        debug("Stopping test recording")
         audio = self.audio_service.stop_recording()
 
         if len(audio) == 0:
-            print("[VoiceFlow] No audio recorded in test")
+            warning("No audio recorded in test")
             return {"success": False, "error": "No audio recorded", "transcript": ""}
 
-        print(f"[VoiceFlow] Test recorded {len(audio)} samples")
+        info(f"Test recorded {len(audio)} samples")
 
         # Wait for model if needed
         wait_time = 0
         while not self._model_loaded and wait_time < 10:
             if not self._model_loading:
                 return {"success": False, "error": "Model not loaded", "transcript": ""}
-            print(f"[VoiceFlow] Waiting for model... ({wait_time}s)")
+            debug(f"Waiting for model... ({wait_time}s)")
             time.sleep(0.5)
             wait_time += 0.5
 
@@ -274,25 +282,33 @@ class AppController:
                 audio,
                 language=settings.language,
             )
-            print(f"[VoiceFlow] Test transcription: '{text}'")
+            info(f"Test transcription: '{text}'")
             return {"success": True, "transcript": text or ""}
         except Exception as e:
-            print(f"[VoiceFlow] Test transcription error: {e}")
+            exception(f"Test transcription error: {e}")
             return {"success": False, "error": str(e), "transcript": ""}
 
     def open_data_folder(self):
         """Open the folder containing application data."""
         try:
             folder_path = str(self.db.db_path.parent)
-            print(f"[VoiceFlow] Opening data folder: {folder_path}")
+            info(f"Opening data folder: {folder_path}")
             os.startfile(folder_path)
         except Exception as e:
-            print(f"[VoiceFlow] Failed to open data folder: {e}")
+            error(f"Failed to open data folder: {e}")
 
     def set_popup_enabled(self, enabled: bool):
         """Enable or disable the popup/hotkey functionality."""
         self._popup_enabled = enabled
-        print(f"[VoiceFlow] Popup {'enabled' if enabled else 'disabled'}")
+        debug(f"Popup {'enabled' if enabled else 'disabled'}")
+
+    def reset_all_data(self):
+        """Reset all data and return to fresh state."""
+        info("Resetting all user data...")
+        self.db.reset_all_data()
+        # Reset settings service cache
+        self.settings_service._settings = None
+        info("All data has been reset")
 
 
 # Singleton instance

@@ -2,6 +2,7 @@ import numpy as np
 from typing import Optional
 from faster_whisper import WhisperModel
 import threading
+from services.logger import debug, info as log_info
 
 
 class TranscriptionService:
@@ -59,7 +60,7 @@ class TranscriptionService:
         # Transcribe
         language_arg = None if language == "auto" else language
 
-        print(f"[VoiceFlow] Audio stats: len={len(audio)}, max={np.abs(audio).max():.4f}, mean={np.abs(audio).mean():.6f}")
+        debug(f"Audio stats: len={len(audio)}, max={np.abs(audio).max():.4f}, mean={np.abs(audio).mean():.6f}")
 
         segments, info = self._model.transcribe(
             audio,
@@ -74,7 +75,7 @@ class TranscriptionService:
 
         # Combine all segments
         segments_list = list(segments)
-        print(f"[VoiceFlow] Got {len(segments_list)} segments")
+        debug(f"Got {len(segments_list)} segments")
         text_parts = [segment.text for segment in segments_list]
         text = " ".join(text_parts).strip()
 

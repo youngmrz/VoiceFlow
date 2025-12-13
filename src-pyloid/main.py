@@ -3,8 +3,12 @@ from pyloid.utils import get_production_path, is_production
 from pyloid.serve import pyloid_serve
 from pyloid import Pyloid
 
-from server import server, register_onboarding_complete_callback
+from server import server, register_onboarding_complete_callback, register_data_reset_callback
 from app_controller import get_controller
+from services.logger import setup_logger, info, error, debug, exception
+
+# Setup logging first thing
+logger = setup_logger()
 
 # Initialize app
 app = Pyloid(app_name="VoiceFlow", single_instance=True, server=server)
@@ -70,9 +74,9 @@ def get_screen_info():
             else:
                 _screen_width = geometry.width() if hasattr(geometry, 'width') else 1920
                 _screen_height = geometry.height() if hasattr(geometry, 'height') else 1080
-            print(f"[VoiceFlow] Screen size: {_screen_width}x{_screen_height}")
+            info(f"Screen size: {_screen_width}x{_screen_height}")
     except Exception as e:
-        print(f"[VoiceFlow] Failed to get screen info: {e}")
+        error(f"Failed to get screen info: {e}")
 
 
 def resize_popup(width: int, height: int):
@@ -99,65 +103,71 @@ def resize_popup(width: int, height: int):
         )
         qwindow.show()
     except Exception as e:
-        print(f"[VoiceFlow] Failed to resize popup: {e}")
+        error(f"Failed to resize popup: {e}")
 
 
 def init_popup():
     """Initialize the recording popup."""
     global popup_window
-    print("[VoiceFlow] init_popup called")
+    info("init_popup called")
 
-    if popup_window is None:
-        # Get screen info first
-        get_screen_info()
+    try:
+        if popup_window is None:
+            # Get screen info first
+            get_screen_info()
 
-        # Create window with idle size initially
-        # frame=False makes it frameless, transparent=True enables transparency
-        popup_window = app.create_window(
-            title="Recording",
-            width=POPUP_IDLE_WIDTH,
-            height=POPUP_IDLE_HEIGHT,
-            frame=False,
-            transparent=True,
-        )
+            # Create window with idle size initially
+            # frame=False makes it frameless, transparent=True enables transparency
+            popup_window = app.create_window(
+                title="Recording",
+                width=POPUP_IDLE_WIDTH,
+                height=POPUP_IDLE_HEIGHT,
+                frame=False,
+                transparent=True,
+            )
 
-        # Access internal Qt objects for transparency setup
-        qwindow = popup_window._window._window
-        webview = popup_window._window.web_view
+            # Access internal Qt objects for transparency setup
+            qwindow = popup_window._window._window
+            webview = popup_window._window.web_view
 
-        # CRITICAL: Set background color BEFORE loading URL
-        # Qt WebEngineView requires this order to avoid black/white background
-        webview.page().setBackgroundColor(QColor(0, 0, 0, 0))
+            # CRITICAL: Set background color BEFORE loading URL
+            # Qt WebEngineView requires this order to avoid black/white background
+            webview.page().setBackgroundColor(QColor(0, 0, 0, 0))
 
-        # Load the URL
-        if is_production():
-            url = pyloid_serve(directory=get_production_path("dist-front"))
-            popup_window.load_url(f"{url}#/popup")
+            # Load the URL
+            if is_production():
+                url = pyloid_serve(directory=get_production_path("dist-front"))
+                popup_window.load_url(f"{url}#/popup")
+            else:
+                popup_window.load_url("http://localhost:5173#/popup")
+
+            # Position at bottom center
+            popup_x = (_screen_width - POPUP_IDLE_WIDTH) // 2
+            popup_y = _screen_height - 100
+            popup_window.set_position(popup_x, popup_y)
+
+            # Set window flags for stay-on-top and no taskbar icon
+            # Must be done before show() and requires hide/show cycle
+            qwindow.setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool  # Prevents taskbar icon
+            )
+
+            # Show the window
+            popup_window.show()
+            info("Popup window created and shown")
+
+            # Send initial idle state after a brief delay to ensure page is loaded
+            def send_initial_state():
+                send_popup_event('popup-state', {'state': 'idle'})
+                info("Sent initial idle state to popup")
+
+            QTimer.singleShot(200, send_initial_state)
         else:
-            popup_window.load_url("http://localhost:5173#/popup")
-
-        # Position at bottom center
-        popup_x = (_screen_width - POPUP_IDLE_WIDTH) // 2
-        popup_y = _screen_height - 100
-        popup_window.set_position(popup_x, popup_y)
-
-        # Set window flags for stay-on-top and no taskbar icon
-        # Must be done before show() and requires hide/show cycle
-        qwindow.setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool  # Prevents taskbar icon
-        )
-
-        # Show the window
-        popup_window.show()
-
-        # Send initial idle state after a brief delay to ensure page is loaded
-        def send_initial_state():
-            send_popup_event('popup-state', {'state': 'idle'})
-            print("[VoiceFlow] Sent initial idle state to popup")
-
-        QTimer.singleShot(200, send_initial_state)
+            info("Popup window already exists, skipping creation")
+    except Exception as e:
+        exception(f"Failed to initialize popup: {e}")
 
 def send_popup_event(name, detail):
     """Send event to popup window using Pyloid's invoke method."""
@@ -166,21 +176,21 @@ def send_popup_event(name, detail):
         try:
             popup_window.invoke(name, detail)
         except Exception as e:
-            print(f"[VoiceFlow] Failed to send popup event: {e}")
+            error(f"Failed to send popup event: {e}")
 
 def on_recording_start():
-    print("[VoiceFlow] Recording started")
+    info("Recording started")
     # Resize to active size for recording
     resize_popup(POPUP_ACTIVE_WIDTH, POPUP_ACTIVE_HEIGHT)
     send_popup_event('popup-state', {'state': 'recording'})
 
 def on_recording_stop():
-    print("[VoiceFlow] Recording stopped - now processing")
+    info("Recording stopped - now processing")
     # Keep active size during processing
     send_popup_event('popup-state', {'state': 'processing'})
 
 def on_transcription_complete(text: str):
-    print(f"[VoiceFlow] Transcription complete: {text[:50]}...")
+    info(f"Transcription complete: {text[:50]}...")
     # Resize back to idle size
     resize_popup(POPUP_IDLE_WIDTH, POPUP_IDLE_HEIGHT)
     send_popup_event('popup-state', {'state': 'idle'})
@@ -194,16 +204,47 @@ def on_amplitude(amp: float):
 def on_onboarding_complete():
     """Called when user completes onboarding - hide main window, show popup."""
     global window
-    print("[VoiceFlow] Onboarding complete - initializing popup")
+    info("Onboarding complete - initializing popup")
     # Hide the main window (user can reopen via tray)
     if window:
         window.hide()
-    # Initialize the popup
-    QTimer.singleShot(300, init_popup)
+    # Initialize the popup directly (QTimer doesn't work reliably from async RPC context)
+    init_popup()
 
 
-# Register the onboarding complete callback
+def hide_popup():
+    """Hide the popup window (used when returning to onboarding)."""
+    global popup_window
+    info("Hiding popup window")
+    if popup_window:
+        try:
+            popup_window.hide()
+            popup_window.close()
+            popup_window = None
+            info("Popup window hidden and destroyed")
+        except Exception as e:
+            error(f"Failed to hide popup: {e}")
+
+
+def on_data_reset():
+    """Called when user resets all data - show main window, hide popup."""
+    global window
+    info("Data reset - returning to onboarding")
+    # Hide the popup
+    hide_popup()
+    # Show the main window for onboarding
+    if window:
+        window.show()
+        try:
+            qwindow = window._window._window
+            qwindow.showMaximized()
+        except Exception as e:
+            error(f"Could not maximize window: {e}")
+
+
+# Register callbacks
 register_onboarding_complete_callback(on_onboarding_complete)
+register_data_reset_callback(on_data_reset)
 
 # Set UI callbacks
 controller.set_ui_callbacks(
@@ -220,6 +261,7 @@ controller.initialize()
 # Check if onboarding is complete
 settings = controller.get_settings()
 onboarding_complete = settings.get("onboardingComplete", False)
+info(f"Startup: onboarding_complete={onboarding_complete}")
 
 # Main window setup
 if is_production():
@@ -232,6 +274,7 @@ else:
 
 if onboarding_complete:
     # Start minimized - user can open via tray icon
+    info("Onboarding already complete - hiding window and scheduling popup init")
     window.hide()
     # Initialize popup after a short delay
     QTimer.singleShot(500, init_popup)
@@ -244,7 +287,7 @@ else:
         qwindow = window._window._window
         qwindow.showMaximized()
     except Exception as e:
-        print(f"[VoiceFlow] Could not maximize window: {e}")
+        error(f"Could not maximize window: {e}")
     # Don't initialize popup during onboarding
 
 app.run()
