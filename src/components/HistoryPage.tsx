@@ -1,27 +1,27 @@
 import { useEffect, useState } from "react";
-import { Search, Copy, Trash2, Calendar } from "lucide-react";
+import { Search, Copy, Trash2, CalendarDays, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
+import EmptyStateImg from "@/assets/empty-state.png";
 
 export function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Reusing the same load logic as HistoryTab/HomePage for consistency
   const loadHistory = async (searchQuery?: string) => {
     setLoading(true);
-    setError(null);
     try {
+      // Fetch 100 items by default for the full page view
       const data = await api.getHistory(100, 0, searchQuery || undefined);
       setHistory(data);
     } catch (error) {
       console.error("Failed to load history:", error);
-      setError("Failed to load history. Please try again.");
       toast.error("Failed to load history");
     } finally {
       setLoading(false);
@@ -35,7 +35,7 @@ export function HistoryPage() {
   useEffect(() => {
     const debounce = setTimeout(() => {
       loadHistory(search);
-    }, 300);
+    }, 500);
     return () => clearTimeout(debounce);
   }, [search]);
 
@@ -64,123 +64,116 @@ export function HistoryPage() {
     }
   };
 
-  // Group history by date
   const groupedHistory = groupByDate(history);
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground/90">History</h1>
-            <p className="text-muted-foreground mt-1">Manage your voice notes</p>
+    <div className="min-h-screen w-full bg-background/50">
+      <div className="w-full max-w-[1600px] mx-auto p-6 md:p-10 space-y-10">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground mb-2">
+              Full History
+            </h1>
+            <p className="text-lg text-muted-foreground/80 font-light max-w-2xl">
+              A complete archive of your voice notes and dictations.
+            </p>
+          </div>
+          
+          <div className="w-full md:w-[400px] relative group">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+             <Input 
+               placeholder="Search archive..." 
+               className="pl-10 h-11 w-full bg-background/50 border-border/50 focus:bg-background transition-all shadow-sm"
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
+             />
+          </div>
         </div>
-      </div>
 
-      {/* Search */}
-      <div className="relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-        <Input
-          type="search"
-          placeholder="Search transcriptions..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-11 h-12 text-base rounded-xl bg-card border-none shadow-sm focus-visible:ring-primary/20"
-        />
-      </div>
-
-      {/* History List */}
-      <div className="flex-1 space-y-8 pb-10">
-        {loading ? (
-          <div className="text-center py-20 text-muted-foreground">Loading...</div>
-        ) : error ? (
-          <div className="text-center py-20 border-2 border-dashed border-destructive/30 rounded-xl bg-destructive/5" role="alert">
-            <p className="text-destructive font-medium">{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={() => loadHistory(search)}
-            >
-              Try again
-            </Button>
-          </div>
-        ) : Object.keys(groupedHistory).length === 0 ? (
-           <div className="text-center py-20 border-2 border-dashed rounded-xl">
-             <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="h-6 w-6 text-muted-foreground/50" aria-hidden="true" />
-             </div>
-             <p className="text-muted-foreground font-medium">
-               {search ? "No results found for your search" : "No transcriptions yet"}
-             </p>
-          </div>
-        ) : (
-          Object.entries(groupedHistory).map(([dateLabel, entries]) => (
-            <div key={dateLabel}>
-               <div className="flex items-center gap-2 mb-4 pl-1">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    {dateLabel}
-                  </h3>
-               </div>
-              
-              <div className="grid gap-4">
-                {entries.map((entry) => (
-                  <Card
-                    key={entry.id}
-                    className="group border-none shadow-sm hover:shadow-md transition-all duration-200 bg-card hover:bg-white dark:hover:bg-card/80"
-                  >
-                    <CardContent className="p-5 flex gap-5">
-                       {/* Time Column */}
-                        <div className="flex flex-col items-center pt-1 min-w-[4rem]">
-                             <span className="text-sm font-bold text-foreground/80 font-mono">
-                                {formatTime(entry.created_at)}
-                             </span>
-                        </div>
-                        
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[15px] leading-relaxed text-foreground/90 font-medium whitespace-pre-wrap break-words">
-                              {entry.text}
-                          </p>
-                          <div className="flex items-center gap-3 mt-3">
-                            <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                                {entry.word_count} words
-                            </span>
-                             <span className="text-xs text-muted-foreground/70">
-                                {entry.char_count} chars
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Actions */}
-                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full"
-                            onClick={() => handleCopy(entry.text)}
-                            aria-label="Copy transcription to clipboard"
-                          >
-                            <Copy className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
-                            onClick={() => handleDelete(entry.id)}
-                            aria-label="Delete transcription"
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-                        </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+        {/* Content */}
+        <section className="animate-in fade-in slide-in-from-top-8 duration-700 delay-100 min-h-[500px]">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+               {[...Array(12)].map((_, i) => (
+                 <div key={i} className="h-48 rounded-xl bg-secondary/20 animate-pulse" />
+               ))}
             </div>
-          ))
-        )}
+          ) : Object.keys(groupedHistory).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 border border-dashed border-border/50 rounded-3xl bg-secondary/5">
+               <img 
+                 src={EmptyStateImg} 
+                 alt="No transcriptions" 
+                 className="w-64 opacity-70 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500" 
+               />
+               <div className="space-y-1">
+                 <p className="text-xl font-medium text-foreground">
+                    {search ? "No matching results" : "Archive is empty"}
+                 </p>
+                 <p className="text-muted-foreground">
+                   {search ? "Try searching for simpler keywords." : "Everything you transcribe will be saved here."}
+                 </p>
+               </div>
+            </div>
+          ) : (
+            <div className="space-y-12">
+              {Object.entries(groupedHistory).map(([dateLabel, entries]) => (
+                <div key={dateLabel} className="space-y-4">
+                  <div className="flex items-center gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    <CalendarDays className="w-4 h-4 text-primary" />
+                    <h3>{dateLabel}</h3>
+                    <div className="h-px flex-1 bg-border/40" />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {entries.map((entry) => (
+                      <Card
+                        key={entry.id}
+                        className="group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm border-border/50 hover:bg-card hover:border-primary/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                      >
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
+                             <Clock className="w-3 h-3" />
+                             {formatTime(entry.created_at)}
+                          </span>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                             <Button
+                               variant="ghost"
+                               size="icon-sm"
+                               className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                               onClick={() => handleCopy(entry.text)}
+                             >
+                                <Copy className="h-3.5 w-3.5" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="icon-sm"
+                               className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                               onClick={() => handleDelete(entry.id)}
+                             >
+                                <Trash2 className="h-3.5 w-3.5" />
+                             </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-2 flex-grow">
+                          <p className="text-base leading-relaxed line-clamp-6 font-medium text-foreground/90 group-hover:text-foreground transition-colors">
+                            {entry.text}
+                          </p>
+                        </CardContent>
+                        <div className="px-6 pb-4 pt-0 mt-auto">
+                           <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/40 group-hover:text-primary/80 transition-colors">
+                              {entry.word_count} words
+                           </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
@@ -206,7 +199,7 @@ function groupByDate(entries: HistoryEntry[]): Record<string, HistoryEntry[]> {
     } else if (isSameDay(entryDate, yesterday)) {
       label = "Yesterday";
     } else {
-      label = entryDate.toLocaleDateString([], { month: "short", day: "numeric" });
+      label = entryDate.toLocaleDateString([], { weekday: 'long', month: "long", day: "numeric" });
     }
 
     if (!groups[label]) {

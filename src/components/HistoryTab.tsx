@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Search, Copy, Trash2, Calendar } from "lucide-react";
+import { Search, Copy, Trash2, CalendarDays, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
+import EmptyStateImg from "@/assets/empty-state.png";
 
 export function HistoryTab() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -15,10 +16,12 @@ export function HistoryTab() {
   const loadHistory = async (searchQuery?: string) => {
     setLoading(true);
     try {
+      // Fetch more items for the history tab since it's the main view
       const data = await api.getHistory(100, 0, searchQuery || undefined);
       setHistory(data);
     } catch (error) {
       console.error("Failed to load history:", error);
+      toast.error("Failed to load history");
     } finally {
       setLoading(false);
     }
@@ -31,7 +34,7 @@ export function HistoryTab() {
   useEffect(() => {
     const debounce = setTimeout(() => {
       loadHistory(search);
-    }, 300);
+    }, 500); // 500ms debounce
     return () => clearTimeout(debounce);
   }, [search]);
 
@@ -40,6 +43,7 @@ export function HistoryTab() {
       await api.copyToClipboard(text);
       toast.success("Copied to clipboard");
     } catch (error) {
+      // Fallback
       try {
         await navigator.clipboard.writeText(text);
         toast.success("Copied to clipboard");
@@ -63,80 +67,116 @@ export function HistoryTab() {
   const groupedHistory = groupByDate(history);
 
   return (
-    <div className="space-y-6 p-4">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10 h-10 rounded-xl bg-muted/40 border-none shadow-sm focus-visible:ring-primary/20"
-        />
-      </div>
+    <div className="min-h-screen w-full bg-background/50">
+      <div className="w-full max-w-[1600px] mx-auto p-6 md:p-10 space-y-8">
+        
+        {/* Header & Search */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+           <div>
+              <h1 className="text-4xl font-bold tracking-tighter text-foreground mb-2">History</h1>
+              <p className="text-muted-foreground font-light text-lg">
+                Browse and manage your past transcriptions.
+              </p>
+           </div>
+           
+           <div className="w-full md:w-[400px] relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <Input
+                type="search"
+                placeholder="Search history..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 h-11 rounded-xl bg-background/50 border-border/50 shadow-sm focus-visible:ring-primary/20 hover:bg-background transition-all"
+              />
+           </div>
+        </div>
 
-      {/* History Cards */}
-      <div className="space-y-6">
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
-        ) : Object.keys(groupedHistory).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            {search ? "No results found" : "No transcriptions yet"}
-          </div>
-        ) : (
-          Object.entries(groupedHistory).map(([dateLabel, entries]) => (
-            <div key={dateLabel}>
-               <div className="flex items-center gap-2 mb-3 px-1">
-                  <Calendar className="w-3.5 h-3.5 text-primary" />
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {dateLabel}
-                  </h3>
-               </div>
-              <div className="space-y-3">
-                {entries.map((entry) => (
-                  <Card key={entry.id} className="border-none shadow-sm hover:shadow-md transition-all group bg-card hover:bg-white dark:hover:bg-card/80">
-                    <CardContent className="p-4 flex gap-4">
-                       <span className="text-xs font-mono text-muted-foreground pt-0.5 min-w-[3rem]">
-                          {formatTime(entry.created_at)}
-                       </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
-                          {entry.text}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                             <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-                                {entry.word_count} words
-                             </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                          onClick={() => handleCopy(entry.text)}
-                          aria-label="Copy transcription to clipboard"
-                        >
-                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDelete(entry.id)}
-                          aria-label="Delete transcription"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+        {/* Content */}
+        <div className="min-h-[500px] animate-in fade-in slide-in-from-top-8 duration-700 delay-100">
+          {loading ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="h-40 rounded-xl bg-secondary/20 animate-pulse" />
                 ))}
-              </div>
+             </div>
+          ) : Object.keys(groupedHistory).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 border border-dashed border-border/50 rounded-3xl bg-secondary/5 mt-8">
+               <img 
+                 src={EmptyStateImg} 
+                 alt="No results" 
+                 className="w-48 opacity-60 mix-blend-luminosity" 
+               />
+               <div>
+                  <p className="text-lg font-medium text-foreground">
+                    {search ? "No matches found" : "No history yet"}
+                  </p>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {search ? "Try a different search term" : "Your transcriptions will appear here"}
+                  </p>
+               </div>
             </div>
-          ))
-        )}
+          ) : (
+            <div className="space-y-12">
+              {Object.entries(groupedHistory).map(([dateLabel, entries]) => (
+                <div key={dateLabel} className="space-y-5">
+                   {/* Date Header */}
+                   <div className="flex items-center gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur py-3">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                        {dateLabel}
+                      </h3>
+                      <div className="h-px flex-1 bg-border/40" />
+                   </div>
+
+                   {/* Grid */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {entries.map((entry) => (
+                        <Card 
+                          key={entry.id} 
+                          className="group flex flex-col h-full bg-card/60 backdrop-blur-sm border-border/50 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:bg-card hover:border-primary/20 transition-all duration-300"
+                        >
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                             <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                {formatTime(entry.created_at)}
+                             </span>
+                             <div className="opacity-0 group-hover:opacity-100 transition-all flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                  onClick={() => handleCopy(entry.text)}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  onClick={() => handleDelete(entry.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                             </div>
+                          </CardHeader>
+                          <CardContent className="pt-2 flex-grow flex flex-col gap-4">
+                             <p className="text-sm md:text-base font-medium leading-relaxed text-foreground/90 group-hover:text-foreground line-clamp-5 transition-colors">
+                               {entry.text}
+                             </p>
+                             <div className="mt-auto">
+                                <span className="text-[10px] uppercase tracking-wider font-semibold text-primary/40 group-hover:text-primary/70 transition-colors">
+                                   {entry.word_count} words
+                                </span>
+                             </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -162,7 +202,7 @@ function groupByDate(entries: HistoryEntry[]): Record<string, HistoryEntry[]> {
     } else if (isSameDay(entryDate, yesterday)) {
       label = "Yesterday";
     } else {
-      label = entryDate.toLocaleDateString([], { month: "short", day: "numeric" });
+      label = entryDate.toLocaleDateString([], { weekday: 'long', month: "long", day: "numeric" });
     }
 
     if (!groups[label]) {
