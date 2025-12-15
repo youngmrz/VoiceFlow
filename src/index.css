@@ -4,10 +4,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans: "Outfit", "Inter", "Segoe UI", system-ui, sans-serif;
+    /* Premium Typography */
+    --font-sans: "Clash Display", "Inter", "Segoe UI", system-ui, sans-serif;
+    --font-serif: "Instrument Serif", Georgia, serif;
     --font-mono: "JetBrains Mono", "Fira Code", monospace;
-    
+
     --radius: 0.75rem;
+    --radius-lg: 1.5rem;
+    --radius-xl: 2rem;
+    --radius-3xl: 1.875rem;
 
     --tracking-tighter: -0.05em;
     --tracking-tight: -0.025em;
@@ -15,14 +20,16 @@
     --tracking-wider: 0.05em;
     --tracking-widest: 0.1em;
 
-    /* Profound Shadows with Color */
+    /* Enhanced Shadows */
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
     --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     --shadow-glow: 0 0 40px -10px var(--primary);
-    
+    --shadow-glow-lg: 0 0 80px -20px var(--primary);
+    --shadow-multi: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.05);
+
     /* Animation Durations */
     --animate-in-duration: 0.6s;
-    
+
     /* Variable Mapping */
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -46,217 +53,526 @@
 }
 
 :root {
-    /* Pure Neutral Palette Base - Avoiding Slate/Blue bias */
-    --primary-neutral: oklch(0.98 0 0); /* Pure White for primary contrast */
-    --primary-sage: oklch(0.70 0.12 150); /* Kept for brand moments only */
-    
+    /* Premium Editorial Palette - Light Mode */
+    --primary-emerald: #34d399;
+    --cream: #faf8f5;
+    --navy: #050a0f;
+
     /* Light Mode */
-    --background: oklch(0.99 0 0);
-    --foreground: oklch(0.12 0 0);
-    
-    --card: oklch(1.0 0 0);
-    --card-foreground: oklch(0.12 0 0);
-    
-    --popover: oklch(1.0 0 0);
-    --popover-foreground: oklch(0.12 0 0);
+    --background: #faf8f5;
+    --foreground: #0a0f14;
 
-    --primary: oklch(0.12 0 0);
-    --primary-foreground: oklch(0.99 0 0);
+    --card: #ffffff;
+    --card-foreground: #0a0f14;
 
-    --secondary: oklch(0.96 0 0);
-    --secondary-foreground: oklch(0.12 0 0);
+    --popover: #ffffff;
+    --popover-foreground: #0a0f14;
 
-    --muted: oklch(0.96 0 0);
-    --muted-foreground: oklch(0.40 0 0);
+    --primary: #10b981;
+    --primary-foreground: #faf8f5;
 
-    --accent: oklch(0.96 0 0);
-    --accent-foreground: oklch(0.12 0 0);
+    --secondary: #f0ebe5;
+    --secondary-foreground: #0a0f14;
 
-    --destructive: oklch(0.6 0.15 25);
-    --destructive-foreground: oklch(0.98 0 0);
+    --muted: #f0ebe5;
+    --muted-foreground: #6b7280;
 
-    --border: oklch(0.90 0 0);
-    --input: oklch(0.90 0 0);
-    --ring: oklch(0.12 0 0);
-    
-    --sidebar: oklch(0.97 0 0);
-    --sidebar-foreground: oklch(0.30 0 0);
+    --accent: #f0ebe5;
+    --accent-foreground: #0a0f14;
+
+    --destructive: #ef4444;
+    --destructive-foreground: #faf8f5;
+
+    --border: #e5e0da;
+    --input: #e5e0da;
+    --ring: #10b981;
+
+    --sidebar: #f5f0eb;
+    --sidebar-foreground: #374151;
 }
 
 .dark {
-    /* TRUE NEUTRAL DARK - No Blue/Slate Tint */
-    --background: oklch(0.09 0 0); /* Pure neutral dark gray */
-    --foreground: oklch(0.98 0 0);
+    /* Premium Editorial Palette - Dark Mode */
+    /* Rich dark navy background instead of pure black */
+    --background: #050a0f;
+    --foreground: #faf8f5;
 
-    /* Glassy cards */
-    --card: oklch(0.14 0 0); 
-    --card-foreground: oklch(0.98 0 0);
+    /* Glassy cards with warm undertones */
+    --card: #0c1218;
+    --card-foreground: #faf8f5;
 
-    --popover: oklch(0.14 0 0);
-    --popover-foreground: oklch(0.98 0 0);
+    --popover: #0c1218;
+    --popover-foreground: #faf8f5;
 
-    /* Primary Accent - Now Sage Green Again (User Requested Neutral Shadcn but keeping brand) */
-    /* Or if user wants 'Neutral' primary, this would be white. 
-       Assuming they want the 'base' colors to be neutral (gray/black) not slate. */
-    --primary: oklch(0.70 0.12 150); /* Sage Green Brand */
-    --primary-foreground: oklch(0.1 0.05 150);
+    /* Emerald/Teal Primary Accent */
+    --primary: #34d399;
+    --primary-foreground: #050a0f;
 
-    --secondary: oklch(0.18 0 0);
-    --secondary-foreground: oklch(0.98 0 0);
+    --secondary: #111921;
+    --secondary-foreground: #faf8f5;
 
-    --muted: oklch(0.18 0 0);
-    --muted-foreground: oklch(0.60 0 0);
+    --muted: #111921;
+    --muted-foreground: #9ca3af;
 
-    --accent: oklch(0.18 0 0); 
-    --accent-foreground: oklch(0.98 0 0);
+    --accent: #111921;
+    --accent-foreground: #faf8f5;
 
-    --destructive: oklch(0.4 0.15 25);
-    --destructive-foreground: oklch(0.98 0 0);
+    --destructive: #f87171;
+    --destructive-foreground: #050a0f;
 
-    --border: oklch(0.22 0 0);
-    --input: oklch(0.22 0 0);
-    --ring: oklch(0.70 0.12 150);
+    --border: #1a242e;
+    --input: #1a242e;
+    --ring: #34d399;
+
+    --sidebar: #080e14;
+    --sidebar-foreground: #d1d5db;
 }
 
 @layer base {
-  * {
-    border-color: var(--border);
-    outline-color: color-mix(in oklch, var(--ring), transparent 50%);
-  }
-  
-  html {
-      scroll-behavior: smooth;
-  }
+    * {
+        border-color: var(--border);
+        outline-color: color-mix(in srgb, var(--ring), transparent 50%);
+    }
 
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    letter-spacing: var(--tracking-wide);
-    position: relative;
-    overflow-x: hidden;
-  }
+    html {
+        scroll-behavior: smooth;
+    }
 
-  /* NOISE TEXTURE OVERLAY */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    opacity: 0.4;
-  }
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        letter-spacing: var(--tracking-wide);
+        position: relative;
+        overflow-x: hidden;
+    }
 
-  /* AMBIENT STATIC BLOBS - Re-colored to be more subtle/neutral with hints */
-  
-  /* Top Right - Primary Sage */
-  body::after {
-    content: "";
-    position: fixed;
-    top: -30%;
-    right: -20%;
-    width: 70vw;
-    height: 70vh;
-    background: radial-gradient(circle, color-mix(in oklch, var(--primary), transparent 90%) 0%, transparent 70%);
-    filter: blur(120px);
-    z-index: -2;
-    pointer-events: none;
-  }
+    /* NOISE TEXTURE OVERLAY - More subtle for premium feel */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+        pointer-events: none;
+        opacity: 0.5;
+    }
 
-  /* Bottom Left - Neutral Grey Glow instead of Purple */
-  #root::before {
-    content: "";
-    position: fixed;
-    bottom: -30%;
-    left: -20%;
-    width: 60vw;
-    height: 60vh;
-    background: radial-gradient(circle, color-mix(in oklch, var(--foreground), transparent 95%) 0%, transparent 70%);
-    filter: blur(140px);
-    z-index: -2;
-    pointer-events: none;
-  }
-
-  /* Bottom Right - Subtle Mint */
-  #root::after {
-    content: "";
-    position: fixed;
-    bottom: -10%;
-    right: -10%;
-    width: 50vw;
-    height: 50vh;
-    background: radial-gradient(circle, color-mix(in oklch, var(--primary), transparent 95%) 0%, transparent 60%);
-    filter: blur(100px);
-    z-index: -2;
-    pointer-events: none;
-  }
-
-  /* Selection styling */
-  ::selection {
-      background-color: var(--primary);
-      color: var(--primary-foreground);
-      text-shadow: none;
-  }
+    /* Selection styling with emerald */
+    ::selection {
+        background-color: var(--primary);
+        color: var(--primary-foreground);
+        text-shadow: none;
+    }
 }
 
 @layer utilities {
-    /* Frosted Glass Utilities */
+    /* Premium Glass Morphism */
     .glass {
-        background: color-mix(in oklch, var(--background), transparent 30%);
-        backdrop-filter: blur(16px) saturate(180%);
-        border: 1px solid color-mix(in oklch, var(--foreground), transparent 5%);
+        background: color-mix(in srgb, var(--background), transparent 20%);
+        backdrop-filter: blur(40px) saturate(150%);
+        border: 1px solid color-mix(in srgb, var(--foreground), transparent 92%);
     }
 
     .glass-strong {
-        background: color-mix(in oklch, var(--card), transparent 40%);
-        backdrop-filter: blur(24px) saturate(200%);
-        border: 1px solid color-mix(in oklch, var(--primary), transparent 15%);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--card), transparent 30%) 0%,
+            color-mix(in srgb, var(--card), transparent 50%) 100%
+        );
+        backdrop-filter: blur(40px) saturate(150%);
+        border: 1px solid color-mix(in srgb, var(--foreground), transparent 90%);
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     }
-    
-    /* Text Gradients */
+
+    .glass-card {
+        position: relative;
+        background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--card), transparent 20%) 0%,
+            color-mix(in srgb, var(--card), transparent 40%) 100%
+        );
+        backdrop-filter: blur(40px) saturate(150%);
+        border-radius: var(--radius-3xl);
+        overflow: hidden;
+    }
+
+    .glass-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--foreground), transparent 85%) 0%,
+            transparent 50%,
+            color-mix(in srgb, var(--primary), transparent 70%) 100%
+        );
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .glass-card:hover::before {
+        opacity: 1;
+    }
+
+    /* Text Utilities */
     .text-gradient {
         background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-image: linear-gradient(
-            135deg, 
-            var(--foreground) 0%, 
-            color-mix(in oklch, var(--foreground), transparent 40%) 100%
+            135deg,
+            var(--foreground) 0%,
+            color-mix(in srgb, var(--foreground), transparent 40%) 100%
         );
     }
 
     .text-gradient-primary {
-         background-clip: text;
+        background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-image: linear-gradient(
-            135deg, 
-            white 20%, 
+            135deg,
+            #faf8f5 20%,
             var(--primary) 100%
         );
     }
-    
-    /* Scrollbar */
+
+    .text-gradient-emerald {
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-image: linear-gradient(
+            135deg,
+            #34d399 0%,
+            #10b981 50%,
+            #059669 100%
+        );
+    }
+
+    /* Serif Typography for Headlines */
+    .font-serif {
+        font-family: var(--font-serif);
+    }
+
+    .headline-serif {
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 400;
+    }
+
+    /* Button Glow Effects */
+    .btn-glow {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .btn-glow::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.5s ease;
+    }
+
+    .btn-glow:hover::before {
+        transform: translateX(100%);
+    }
+
+    .btn-glow:hover {
+        box-shadow: 0 0 30px color-mix(in srgb, var(--primary), transparent 50%);
+    }
+
+    /* Gradient Dividers */
+    .divider-gradient {
+        height: 1px;
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--border), transparent 30%) 20%,
+            var(--primary) 50%,
+            color-mix(in srgb, var(--border), transparent 30%) 80%,
+            transparent 100%
+        );
+    }
+
+    /* Grid Pattern Background */
+    .bg-grid {
+        background-image: linear-gradient(
+            color-mix(in srgb, var(--foreground), transparent 97%) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--foreground), transparent 97%) 1px,
+            transparent 1px
+        );
+        background-size: 60px 60px;
+    }
+
+    /* Animated Gradient Orbs */
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        pointer-events: none;
+        opacity: 0.5;
+    }
+
+    .orb-primary {
+        background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+        animation: float-orb 20s ease-in-out infinite;
+    }
+
+    .orb-secondary {
+        background: radial-gradient(circle, color-mix(in srgb, var(--primary), #3b82f6 50%) 0%, transparent 70%);
+        animation: float-orb 25s ease-in-out infinite reverse;
+    }
+
+    .orb-accent {
+        background: radial-gradient(circle, color-mix(in srgb, var(--primary), #8b5cf6 30%) 0%, transparent 70%);
+        animation: float-orb 30s ease-in-out infinite;
+    }
+
+    @keyframes float-orb {
+        0%, 100% {
+            transform: translate(0, 0) scale(1);
+        }
+        25% {
+            transform: translate(30px, -30px) scale(1.1);
+        }
+        50% {
+            transform: translate(-20px, 20px) scale(0.95);
+        }
+        75% {
+            transform: translate(-30px, -20px) scale(1.05);
+        }
+    }
+
+    /* macOS Window Controls */
+    .macos-controls {
+        display: flex;
+        gap: 8px;
+    }
+
+    .macos-controls span {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .macos-controls span:nth-child(1) {
+        background: #ff5f57;
+    }
+
+    .macos-controls span:nth-child(2) {
+        background: #febc2e;
+    }
+
+    .macos-controls span:nth-child(3) {
+        background: #28c840;
+    }
+
+    /* Scrollbar - Premium style */
     ::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
     }
     ::-webkit-scrollbar-track {
         background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-        background: color-mix(in oklch, var(--border), transparent 20%);
+        background: color-mix(in srgb, var(--foreground), transparent 80%);
         border-radius: 10px;
     }
     ::-webkit-scrollbar-thumb:hover {
         background: var(--primary);
     }
+
+    /* Scroll Indicator Animation */
+    @keyframes scroll-bounce {
+        0%, 100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        50% {
+            transform: translateY(8px);
+            opacity: 0.5;
+        }
+    }
+
+    .scroll-indicator {
+        animation: scroll-bounce 2s ease-in-out infinite;
+    }
+
+    /* Badge Styles */
+    .badge-glow {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: color-mix(in srgb, var(--primary), transparent 85%);
+        border: 1px solid color-mix(in srgb, var(--primary), transparent 60%);
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--primary);
+    }
+
+    .badge-glow::before {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--primary), transparent, var(--primary));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: -1;
+        filter: blur(8px);
+    }
+
+    .badge-glow:hover::before {
+        opacity: 0.5;
+    }
+
+    /* Waveform Animation */
+    @keyframes waveform {
+        0%, 100% {
+            height: 20%;
+        }
+        50% {
+            height: 100%;
+        }
+    }
+
+    .waveform-bar {
+        animation: waveform 0.8s ease-in-out infinite;
+    }
+
+    /* Shimmer Animation for Processing */
+    @keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+        100% {
+            background-position: 200% 0;
+        }
+    }
+
+    .shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--primary), transparent 70%) 50%,
+            transparent 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s ease-in-out infinite;
+    }
 }
 
-/* Force specific Card overrides to use glass effects globally if they use bg-card */
+/* Force specific Card overrides */
 .bg-card {
-    background-color: color-mix(in oklch, var(--card), transparent 10%) !important;
+    background-color: color-mix(in srgb, var(--card), transparent 10%) !important;
     backdrop-filter: blur(10px);
-    border: 1px solid color-mix(in oklch, var(--border), transparent 40%);
+    border: 1px solid color-mix(in srgb, var(--border), transparent 40%);
+}
+
+/* Landing Page Specific Styles */
+.landing-page {
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.landing-page .bg-effects {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+}
+
+/* Hero Visual Styles */
+.hero-visual {
+    position: relative;
+}
+
+.hero-visual::before {
+    content: "";
+    position: absolute;
+    inset: -20px;
+    background: radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--primary), transparent 80%) 0%,
+        transparent 70%
+    );
+    filter: blur(40px);
+    z-index: -1;
+}
+
+/* Feature Card Hover Effects */
+.feature-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        0 0 60px color-mix(in srgb, var(--primary), transparent 80%);
+}
+
+/* Comparison Table Styles */
+.comparison-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border), transparent 50%);
+}
+
+.comparison-table th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.comparison-table tbody tr:hover {
+    background: color-mix(in srgb, var(--primary), transparent 95%);
+}
+
+/* CTA Section Gradient */
+.cta-gradient {
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-gradient::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primary), transparent 90%) 0%,
+        transparent 50%,
+        color-mix(in srgb, var(--primary), transparent 95%) 100%
+    );
+    z-index: -1;
 }

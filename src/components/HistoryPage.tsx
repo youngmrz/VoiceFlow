@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { Search, Copy, Trash2, CalendarDays, Clock } from "lucide-react";
+import { Search, Copy, Trash2, CalendarDays, Clock, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
-import EmptyStateImg from "@/assets/empty-state.png";
 
 export function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -67,14 +66,21 @@ export function HistoryPage() {
   const groupedHistory = groupByDate(history);
 
   return (
-    <div className="min-h-screen w-full bg-background/50">
-      <div className="w-full max-w-[1600px] mx-auto p-6 md:p-10 space-y-10">
-        
+    <div className="min-h-screen w-full bg-background/50 relative overflow-x-hidden">
+      {/* Background effects */}
+      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none overflow-hidden" />
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="orb orb-secondary w-[450px] h-[450px] absolute -top-40 -left-40 opacity-15" />
+        <div className="orb orb-primary w-[350px] h-[350px] absolute bottom-20 -right-40 opacity-20" />
+      </div>
+
+      <div className="w-full max-w-[1600px] mx-auto p-6 md:p-10 space-y-10 relative z-10">
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
           <div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground mb-2">
-              Full History
+              Full <span className="headline-serif text-primary">History</span>
             </h1>
             <p className="text-lg text-muted-foreground/80 font-light max-w-2xl">
               A complete archive of your voice notes and dictations.
@@ -102,11 +108,14 @@ export function HistoryPage() {
             </div>
           ) : Object.keys(groupedHistory).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 border border-dashed border-border/50 rounded-3xl bg-secondary/5">
-               <img 
-                 src={EmptyStateImg} 
-                 alt="No transcriptions" 
-                 className="w-64 opacity-70 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500" 
-               />
+               <div className="relative">
+                 <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center">
+                   <Mic className="w-12 h-12 text-primary/40" />
+                 </div>
+                 <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center">
+                   <Search className="w-4 h-4 text-muted-foreground/50" />
+                 </div>
+               </div>
                <div className="space-y-1">
                  <p className="text-xl font-medium text-foreground">
                     {search ? "No matching results" : "Archive is empty"}

@@ -16,31 +16,35 @@ interface SidebarProps {
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   return (
-    <aside className="w-64 h-screen bg-sidebar flex flex-col border-r border-sidebar-border shadow-2xl z-20 relative overflow-hidden">
-       {/* Background Blur blob for Sidebar */}
-       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-10%] left-[-20%] w-[150px] h-[150px] bg-primary/10 blur-[50px] rounded-full" />
-       </div>
+    <aside className="w-64 h-screen bg-sidebar flex flex-col border-r border-sidebar-border relative overflow-hidden">
+      {/* Animated gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="orb orb-primary w-[200px] h-[200px] -top-20 -left-20 opacity-40" />
+        <div className="orb orb-accent w-[150px] h-[150px] bottom-40 -right-20 opacity-30" />
+      </div>
 
       {/* Logo Area */}
       <div className="p-6 pb-8 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 ring-1 ring-white/10">
+          <div className="w-11 h-11 bg-gradient-to-br from-primary via-primary/90 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 ring-1 ring-white/10">
             <Mic className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-sidebar-foreground tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-br from-sidebar-foreground to-sidebar-foreground/70">
-              VoiceFlow
+            <h1 className="font-semibold text-lg text-sidebar-foreground tracking-tight leading-none">
+              Voice<span className="headline-serif text-primary">Flow</span>
             </h1>
-            <p className="text-xs text-sidebar-foreground/50 font-medium mt-0.5 tracking-wide">
-              AI Dictation
+            <p className="text-xs text-sidebar-foreground/50 font-medium mt-1 tracking-wide">
+              Local AI Dictation
             </p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-2 relative z-10">
+      <nav className="flex-1 px-4 space-y-1.5 relative z-10">
+        <p className="text-[10px] font-semibold text-sidebar-foreground/40 uppercase tracking-widest px-4 mb-3">
+          Navigate
+        </p>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -51,7 +55,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               cn(
                 "group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
                 isActive
-                  ? "bg-primary/15 text-primary shadow-sm border border-primary/10 backdrop-blur-sm" 
+                  ? "glass-strong text-primary shadow-lg shadow-primary/10"
                   : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 hover:pl-5 border border-transparent"
               )
             }
@@ -60,13 +64,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               <>
                 <item.icon
                   className={cn(
-                    "h-4 w-4 transition-colors",
-                    isActive ? "text-primary" : "text-sidebar-foreground/60 group-hover:text-primary"
+                    "h-4 w-4 transition-all duration-300",
+                    isActive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-primary"
                   )}
                 />
                 <span className="flex-1">{item.label}</span>
                 {isActive && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_currentColor] animate-pulse" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_currentColor] animate-pulse" />
                 )}
               </>
             )}
@@ -76,49 +80,60 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       {/* Promo / Footer */}
       <div className="p-4 mt-auto relative z-10 space-y-4">
-        
+
         {/* Pro Tip Card */}
-        <div className="glass-strong rounded-2xl p-4 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 bg-primary/10 rounded-full blur-2xl -mr-4 -mt-4 transition-all group-hover:bg-primary/20" />
-            <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                   <div className="p-1.5 rounded-lg bg-primary/20 text-primary">
-                      <Sparkles className="w-3.5 h-3.5" />
-                   </div>
-                   <span className="text-xs font-bold text-sidebar-foreground/80 uppercase tracking-wide">Pro Tip</span>
-                </div>
-                <p className="text-xs text-sidebar-foreground/60 leading-relaxed">
-                    Press <span className="text-primary font-bold font-mono bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">Ctrl+Win</span> to start listening instantly.
-                </p>
+        <div className="glass-card p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8 transition-all group-hover:bg-primary/20" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-primary/20 text-primary">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-semibold text-sidebar-foreground/80 uppercase tracking-wider">Pro Tip</span>
             </div>
+            <p className="text-xs text-sidebar-foreground/60 leading-relaxed">
+              Press{" "}
+              <kbd className="text-primary font-semibold font-mono bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                Ctrl+Win
+              </kbd>{" "}
+              anywhere to start dictating.
+            </p>
+          </div>
         </div>
 
         {/* Community Links */}
         <div className="space-y-1">
-            <a
-              href={`${GITHUB_REPO_URL}/issues`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-2.5 w-full rounded-xl text-xs font-medium text-sidebar-foreground/70 hover:text-primary hover:bg-sidebar-accent/50 transition-all border border-transparent hover:border-sidebar-border/50"
-            >
-              <MessageSquare className="h-4 w-4 opacity-70" />
-              Report Issue
-            </a>
-            
-            <a
-              href={GITHUB_REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-2.5 w-full rounded-xl text-xs font-medium text-sidebar-foreground/70 hover:text-primary hover:bg-sidebar-accent/50 transition-all border border-transparent hover:border-sidebar-border/50"
-            >
-               <Github className="h-4 w-4 opacity-70" />
-               Star on GitHub
-            </a>
+          <a
+            href={`${GITHUB_REPO_URL}/issues`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-2.5 w-full rounded-xl text-xs font-medium text-sidebar-foreground/60 hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Report Issue
+          </a>
 
-            <div className="pt-2 px-4 flex items-center justify-between text-[10px] text-sidebar-foreground/30 font-mono">
-                <span>v1.0.0</span>
-                <span className="flex items-center gap-1"><Heart className="w-2 h-2 text-red-500/50" /> Open Source</span>
-            </div>
+          <a
+            href={GITHUB_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-2.5 w-full rounded-xl text-xs font-medium text-sidebar-foreground/60 hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
+          >
+            <Github className="h-4 w-4" />
+            Star on GitHub
+          </a>
+
+          {/* Footer info */}
+          <div className="pt-3 px-4 flex items-center justify-between text-[10px] text-sidebar-foreground/30 font-mono">
+            <span className="badge-glow !p-1.5 !text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              v1.1.0
+            </span>
+            <span className="flex items-center gap-1">
+              <Heart className="w-2.5 h-2.5 text-red-500/60" />
+              Open Source
+            </span>
+          </div>
         </div>
       </div>
     </aside>

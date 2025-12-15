@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { Search, Copy, Trash2, CalendarDays, Clock } from "lucide-react";
+import { Search, Copy, Trash2, CalendarDays, Clock, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
-import EmptyStateImg from "@/assets/empty-state.png";
 
 export function HistoryTab() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -101,11 +100,14 @@ export function HistoryTab() {
              </div>
           ) : Object.keys(groupedHistory).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 border border-dashed border-border/50 rounded-3xl bg-secondary/5 mt-8">
-               <img 
-                 src={EmptyStateImg} 
-                 alt="No results" 
-                 className="w-48 opacity-60 mix-blend-luminosity" 
-               />
+               <div className="relative">
+                 <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
+                   <Mic className="w-10 h-10 text-primary/40" />
+                 </div>
+                 <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center">
+                   <Search className="w-3 h-3 text-muted-foreground/50" />
+                 </div>
+               </div>
                <div>
                   <p className="text-lg font-medium text-foreground">
                     {search ? "No matches found" : "No history yet"}

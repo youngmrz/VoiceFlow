@@ -23,31 +23,3 @@ export const ONBOARDING_FEATURES = [
   { icon: Gauge, label: "Lightning Fast", desc: "Real-time transcription" },
   { icon: Wand2, label: "AI Powered", desc: "State-of-the-art accuracy" },
 ];
-
-export const ONBOARDING_STEPS_INFO = {
-  welcome: {
-    id: "welcome",
-    title: "Welcome to VoiceFlow",
-    subtitle: "Your AI-powered dictation assistant",
-  },
-  audio: {
-    id: "audio",
-    title: "Select Microphone",
-    subtitle: "Choose your input device",
-  },
-  model: {
-    id: "model",
-    title: "AI Configuration",
-    subtitle: "Balance speed and accuracy",
-  },
-  theme: {
-    id: "theme",
-    title: "Appearance",
-    subtitle: "Make it yours",
-  },
-  final: {
-    id: "final",
-    title: "You're All Set",
-    subtitle: "Start dictating anywhere",
-  }
-};

@@ -6,24 +6,22 @@ export function Popup() {
   const [state, setState] = useState<PopupState>("idle");
   const [amplitude, setAmplitude] = useState(0);
 
-  // Force transparent background on mount - before first paint
   useLayoutEffect(() => {
-    // Set transparent background at all levels
-    document.documentElement.style.cssText = 'background: transparent !important; background-color: transparent !important;';
-    document.body.style.cssText = 'background: transparent !important; background-color: transparent !important; margin: 0; padding: 0;';
-    document.documentElement.classList.add('popup-transparent');
+    document.documentElement.style.cssText =
+      "background: transparent !important;";
+    document.body.style.cssText =
+      "background: transparent !important; margin: 0; padding: 0;";
+    document.documentElement.classList.add("popup-transparent");
 
-    // Also set on root element if it exists
-    const root = document.getElementById('root');
+    const root = document.getElementById("root");
     if (root) {
-      root.style.cssText = 'background: transparent !important; background-color: transparent !important;';
+      root.style.cssText = "background: transparent !important;";
     }
   }, []);
 
   useEffect(() => {
     const handleAmplitude = (e: CustomEvent<number>) => setAmplitude(e.detail);
     const handleState = (e: CustomEvent<{ state: PopupState }>) => {
-      console.log('[Popup] State changed to:', e.detail.state);
       setState(e.detail.state);
     };
 
@@ -38,87 +36,89 @@ export function Popup() {
 
   return (
     <div
-      className="w-screen h-screen flex items-center justify-center select-none overflow-hidden"
-      style={{ background: 'transparent' }}
+      className="w-screen h-screen flex items-center justify-center select-none"
+      style={{ background: "transparent" }}
     >
-      {state === 'idle' && (
-        /* Idle: Minimal thin line - very subtle */
+      {/* IDLE: Tiny pill */}
+      {state === "idle" && (
         <div
-          className="rounded-full"
           style={{
-            width: '48px',
-            height: '4px',
-            background: 'rgba(255, 255, 255, 0.15)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            width: "32px",
+            height: "4px",
+            borderRadius: "2px",
+            background: "rgba(255, 255, 255, 0.15)",
           }}
         />
       )}
 
-      {state === 'recording' && (
-        /* Recording: Compact pill with subtle dots */
+      {/* RECORDING: Simple bars */}
+      {state === "recording" && (
         <div
-          className="flex items-center justify-center rounded-full px-3 py-1.5"
           style={{
-            background: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            display: "flex",
+            alignItems: "center",
+            gap: "3px",
+            padding: "6px 10px",
+            borderRadius: "12px",
+            background: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(12px)",
           }}
         >
-          <div className="flex items-center gap-1">
-            {[0, 1, 2, 3].map((i) => {
-              // Dots react to amplitude - inner more reactive
-              const isInner = i === 1 || i === 2;
-              const baseSize = isInner ? 5 : 4;
-              const ampBoost = amplitude * (isInner ? 4 : 2);
-              const size = Math.min(8, baseSize + ampBoost);
+          {[0, 1, 2, 3, 4].map((i) => {
+            const center = 2;
+            const distance = Math.abs(i - center);
+            const scale = 1 - distance * 0.2;
+            const height = 4 + amplitude * 10 * scale;
 
-              return (
-                <div
-                  key={i}
-                  className="rounded-full transition-all duration-100"
-                  style={{
-                    width: `${size}px`,
-                    height: `${size}px`,
-                    background: 'rgba(255, 255, 255, 0.7)',
-                  }}
-                />
-              );
-            })}
-          </div>
+            return (
+              <div
+                key={i}
+                style={{
+                  width: "2px",
+                  height: `${height}px`,
+                  borderRadius: "1px",
+                  background: "rgba(52, 211, 153, 0.9)",
+                  transition: "height 50ms ease-out",
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
-      {state === 'processing' && (
-        /* Processing: Compact pill with subtle sweep */
+      {/* PROCESSING: Three dots */}
+      {state === "processing" && (
         <div
-          className="relative flex items-center justify-center rounded-full overflow-hidden"
           style={{
-            background: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            width: '56px',
-            height: '20px',
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "8px 12px",
+            borderRadius: "12px",
+            background: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(12px)",
           }}
         >
-          {/* Progress sweep */}
-          <div className="absolute inset-1 rounded-full overflow-hidden bg-white/5">
+          {[0, 1, 2].map((i) => (
             <div
-              className="absolute top-0 bottom-0 left-0 w-1/3 rounded-full"
+              key={i}
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                animation: 'sweep 1s ease-in-out infinite',
+                width: "4px",
+                height: "4px",
+                borderRadius: "50%",
+                background: "rgba(255, 255, 255, 0.7)",
+                animation: "fade 1s ease-in-out infinite",
+                animationDelay: `${i * 0.2}s`,
               }}
             />
-          </div>
+          ))}
         </div>
       )}
 
       <style>{`
-        @keyframes sweep {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(400%); }
+        @keyframes fade {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
         }
       `}</style>
     </div>

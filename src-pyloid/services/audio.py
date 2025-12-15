@@ -36,9 +36,13 @@ class AudioService:
         audio_chunk = indata.copy().flatten()
         self._audio_queue.put(audio_chunk)
 
-        # Calculate amplitude for visualization
+        # Calculate amplitude for visualization using RMS (root mean square)
         if self._amplitude_callback:
-            amplitude = float(np.abs(audio_chunk).mean())
+            # RMS gives better representation of perceived loudness
+            rms = float(np.sqrt(np.mean(audio_chunk ** 2)))
+            # Scale to 0-1 range (typical speech RMS is 0.01-0.1 for float32)
+            # Multiply by 10 and clamp to make it more visible
+            amplitude = min(1.0, rms * 10)
             self._amplitude_callback(amplitude)
 
     def start_recording(self):

@@ -199,10 +199,20 @@ def on_transcription_complete(text: str):
     resize_popup(POPUP_IDLE_WIDTH, POPUP_IDLE_HEIGHT)
     send_popup_event('popup-state', {'state': 'idle'})
 
+def send_main_window_event(name, detail):
+    """Send event to main window using Pyloid's invoke method."""
+    global window
+    if window:
+        try:
+            window.invoke(name, detail)
+        except Exception as e:
+            error(f"Failed to send main window event: {e}")
+
 def on_amplitude(amp: float):
-    # Only send if recording? Or always?
-    # Visualizer is usually only active during recording.
+    # Send to popup if it exists
     send_popup_event('amplitude', amp)
+    # Also send to main window (for onboarding mic test)
+    send_main_window_event('amplitude', amp)
 
 
 def on_onboarding_complete():
