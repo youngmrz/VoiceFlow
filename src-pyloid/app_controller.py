@@ -2,6 +2,11 @@ from typing import Optional, Callable
 import threading
 import time
 import os
+import base64
+import wave
+import sqlite3
+from pathlib import Path
+import numpy as np
 
 from services.database import DatabaseService
 from services.settings import SettingsService
@@ -9,12 +14,7 @@ from services.audio import AudioService
 from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
-from services.logger import get_logger
-
-# Domain loggers for different concerns
-model_log = get_logger("model")
-audio_log = get_logger("audio")
-window_log = get_logger("window")
+from services.logger import info, error, debug, warning, exception
 
 
 class AppController:
@@ -76,12 +76,12 @@ class AppController:
         def load_model():
             self._model_loading = True
             try:
-                model_log.info("Loading model", model=settings.model)
+                info(f"Loading model: {settings.model}...")
                 self.transcription_service.load_model(settings.model)
                 self._model_loaded = True
-                model_log.info("Model loaded successfully", model=settings.model)
+                info("Model loaded successfully!")
             except Exception as e:
-                model_log.error("Failed to load model", model=settings.model, error=str(e))
+                exception(f"Failed to load model: {e}")
                 if self._on_error:
                     self._on_error(f"Failed to load model: {e}")
             finally:
@@ -104,7 +104,7 @@ class AppController:
         """Called when hotkey is pressed."""
         # Don't activate during onboarding
         if not self._popup_enabled:
-            audio_log.debug("Hotkey ignored - popup disabled")
+            debug("Hotkey ignored - popup disabled (onboarding)")
             return
 
         if self._on_recording_start:
@@ -120,10 +120,10 @@ class AppController:
         audio = self.audio_service.stop_recording()
 
         if len(audio) == 0:
-            audio_log.warning("No audio recorded")
+            warning("No audio recorded")
             return
 
-        audio_log.info("Audio recorded", samples=len(audio))
+        info(f"Recorded {len(audio)} samples")
 
         # Transcribe in background
         def transcribe():
@@ -132,47 +132,61 @@ class AppController:
                 wait_time = 0
                 while not self._model_loaded and wait_time < 30:
                     if not self._model_loading:
-                        model_log.warning("Model not loaded and not loading, skipping transcription")
+                        warning("Model not loaded and not loading, skipping transcription")
                         if self._on_transcription_complete:
                             self._on_transcription_complete("")
                         return
-                    model_log.info("Waiting for model to load", wait_seconds=wait_time)
+                    info(f"Waiting for model to load... ({wait_time}s)")
                     time.sleep(1)
                     wait_time += 1
 
                 if not self._model_loaded:
-                    model_log.error("Model load timeout, skipping transcription")
+                    error("Model load timeout, skipping transcription")
                     if self._on_transcription_complete:
                         self._on_transcription_complete("")
                     return
 
                 settings = self.settings_service.get_settings()
-                model_log.info("Transcribing", language=settings.language)
+                info(f"Transcribing with language: {settings.language}")
 
                 text = self.transcription_service.transcribe(
                     audio,
                     language=settings.language,
                 )
 
-                model_log.info("Transcription complete", text_length=len(text) if text else 0)
+                info(f"Transcription result: '{text}'")
 
                 if text:
                     # Paste at cursor
-                    audio_log.debug("Pasting text at cursor")
+                    info("Pasting text at cursor...")
                     self.clipboard_service.paste_at_cursor(text)
 
-                    # Save to history
-                    self.db.add_history(text)
+                    # Save to history (and audio if enabled)
+                    history_id = self.db.add_history(text)
+
+                    if settings.save_audio_to_history:
+                        try:
+                            audio_meta = self._save_audio_attachment(history_id, audio)
+                            self.db.update_history_audio(
+                                history_id,
+                                audio_relpath=audio_meta["audio_relpath"],
+                                audio_duration_ms=audio_meta["audio_duration_ms"],
+                                audio_size_bytes=audio_meta["audio_size_bytes"],
+                                audio_mime=audio_meta["audio_mime"],
+                            )
+                            info(f"Saved audio attachment for history {history_id}")
+                        except (OSError, sqlite3.Error, wave.Error, ValueError) as exc:
+                            warning(f"Failed to save audio attachment: {exc}")
 
                     if self._on_transcription_complete:
                         self._on_transcription_complete(text)
                 else:
-                    model_log.warning("No text transcribed (empty result)")
+                    warning("No text transcribed (empty result)")
                     if self._on_transcription_complete:
                         self._on_transcription_complete("")
 
             except Exception as e:
-                model_log.error("Transcription error", error=str(e))
+                exception(f"Transcription error: {e}")
                 if self._on_error:
                     self._on_error(f"Transcription failed: {e}")
                 # Still notify completion to reset UI state
@@ -197,18 +211,25 @@ class AppController:
             "theme": settings.theme,
             "onboardingComplete": settings.onboarding_complete,
             "microphone": settings.microphone,
+            "saveAudioToHistory": settings.save_audio_to_history,
         }
 
     def update_settings(self, **kwargs) -> dict:
+        debug(f"update_settings called with: {kwargs}")
         # Convert camelCase to snake_case
         mapped = {}
         if "autoStart" in kwargs:
             mapped["auto_start"] = kwargs["autoStart"]
         if "onboardingComplete" in kwargs:
             mapped["onboarding_complete"] = kwargs["onboardingComplete"]
+        if "saveAudioToHistory" in kwargs:
+            mapped["save_audio_to_history"] = kwargs["saveAudioToHistory"]
+
         for key in ["language", "model", "retention", "theme", "microphone"]:
             if key in kwargs:
                 mapped[key] = kwargs[key]
+
+        debug(f"Mapped settings: {mapped}")
         settings = self.settings_service.update_settings(**mapped)
 
         # Reload model if changed
@@ -221,12 +242,13 @@ class AppController:
         if "microphone" in mapped:
             mic_id = mapped["microphone"] if mapped["microphone"] >= 0 else None
             self.audio_service.set_device(mic_id)
+            info(f"Microphone updated to: {mic_id}")
 
         return self.get_settings()
 
     # History methods for RPC
-    def get_history(self, limit: int = 100, offset: int = 0, search: str = None) -> list:
-        return self.db.get_history(limit, offset, search)
+    def get_history(self, limit: int = 100, offset: int = 0, search: str = None, include_audio_meta: bool = False) -> list:
+        return self.db.get_history(limit, offset, search, include_audio_meta)
 
     def delete_history(self, history_id: int):
         self.db.delete_history(history_id)
@@ -246,31 +268,31 @@ class AppController:
 
     def stop_recording(self):
         """Manually stop recording (called from stop button)."""
-        audio_log.debug("Manual stop_recording called")
+        debug("Manual stop_recording called")
         self.hotkey_service.force_deactivate()
 
     def start_test_recording(self):
         """Start recording for onboarding test (no hotkey needed)."""
-        audio_log.debug("Starting test recording")
+        debug("Starting test recording")
         self.audio_service.start_recording()
 
     def stop_test_recording(self) -> dict:
         """Stop test recording, transcribe, and return result (no paste/history)."""
-        audio_log.debug("Stopping test recording")
+        debug("Stopping test recording")
         audio = self.audio_service.stop_recording()
 
         if len(audio) == 0:
-            audio_log.warning("No audio recorded in test")
+            warning("No audio recorded in test")
             return {"success": False, "error": "No audio recorded", "transcript": ""}
 
-        audio_log.info("Test audio recorded", samples=len(audio))
+        info(f"Test recorded {len(audio)} samples")
 
         # Wait for model if needed
         wait_time = 0
         while not self._model_loaded and wait_time < 10:
             if not self._model_loading:
                 return {"success": False, "error": "Model not loaded", "transcript": ""}
-            model_log.debug("Waiting for model", wait_seconds=wait_time)
+            debug(f"Waiting for model... ({wait_time}s)")
             time.sleep(0.5)
             wait_time += 0.5
 
@@ -283,32 +305,103 @@ class AppController:
                 audio,
                 language=settings.language,
             )
-            model_log.info("Test transcription complete", text_length=len(text) if text else 0)
+            info(f"Test transcription: '{text}'")
             return {"success": True, "transcript": text or ""}
         except Exception as e:
-            model_log.error("Test transcription error", error=str(e))
+            exception(f"Test transcription error: {e}")
             return {"success": False, "error": str(e), "transcript": ""}
 
     def open_data_folder(self):
         """Open the folder containing application data."""
         try:
             folder_path = str(self.db.db_path.parent)
-            window_log.info("Opening data folder", path=folder_path)
+            info(f"Opening data folder: {folder_path}")
             os.startfile(folder_path)
         except Exception as e:
-            window_log.error("Failed to open data folder", error=str(e))
+            error(f"Failed to open data folder: {e}")
 
     def set_popup_enabled(self, enabled: bool):
         """Enable or disable the popup/hotkey functionality."""
         self._popup_enabled = enabled
-        window_log.debug("Popup state changed", enabled=enabled)
+        debug(f"Popup {'enabled' if enabled else 'disabled'}")
 
     def reset_all_data(self):
         """Reset all data and return to fresh state."""
-        window_log.info("Resetting all user data")
+        info("Resetting all user data...")
         self.db.reset_all_data()
         # Reset settings service cache
-        self.settings_service._settings = None
+        self.settings_service._cache = None
+        info("All data has been reset")
+
+    def get_history_audio(self, history_id: int) -> dict:
+        """Fetch audio attachment for a history entry as base64."""
+        entry = self.db.get_history_entry(history_id)
+        if not entry or not entry.get("audio_relpath"):
+            raise FileNotFoundError("No audio stored for this history item")
+
+        data_dir = self.db.db_path.parent
+        audio_root = (data_dir / "audio").resolve()
+        audio_path = (data_dir / entry["audio_relpath"]).resolve()
+
+        try:
+            audio_path.relative_to(audio_root)
+        except ValueError:
+            raise FileNotFoundError("Audio path is invalid")
+
+        if not audio_path.exists():
+            raise FileNotFoundError("Audio file missing on disk")
+
+        data = audio_path.read_bytes()
+        return {
+            "base64": base64.b64encode(data).decode("utf-8"),
+            "mime": entry.get("audio_mime") or "audio/wav",
+            "fileName": audio_path.name,
+            "sizeBytes": audio_path.stat().st_size,
+            "durationMs": entry.get("audio_duration_ms"),
+        }
+
+    def _save_audio_attachment(self, history_id: int, audio: np.ndarray) -> dict:
+        """Persist recorded audio as WAV and return metadata for DB update."""
+        # Ensure audio directory exists
+        audio_dir = self.db.db_path.parent / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        relpath = Path("audio") / f"history_{history_id}.wav"
+        output_path = self.db.db_path.parent / relpath
+        tmp_path = output_path.with_suffix(".wav.tmp")
+
+        # Normalize audio into flat int16 PCM
+        audio_array = np.asarray(audio)
+        if audio_array.ndim > 1:
+            audio_array = audio_array.reshape(-1)
+
+        if np.issubdtype(audio_array.dtype, np.floating):
+            audio_clipped = np.clip(audio_array, -1.0, 1.0)
+            audio_int16 = (audio_clipped * 32767).astype(np.int16)
+        elif audio_array.dtype == np.int16:
+            audio_int16 = audio_array
+        else:
+            # Fallback: clip to int16 range
+            audio_clipped = np.clip(audio_array, -32768, 32767)
+            audio_int16 = audio_clipped.astype(np.int16)
+
+        with wave.open(str(tmp_path), "wb") as wf:
+            wf.setnchannels(self.audio_service.CHANNELS)
+            wf.setsampwidth(2)  # 16-bit PCM
+            wf.setframerate(self.audio_service.SAMPLE_RATE)
+            wf.writeframes(audio_int16.tobytes())
+
+        tmp_path.replace(output_path)
+
+        duration_ms = int((len(audio_int16) / float(self.audio_service.SAMPLE_RATE)) * 1000)
+        size_bytes = output_path.stat().st_size
+
+        return {
+            "audio_relpath": relpath.as_posix(),
+            "audio_duration_ms": duration_ms,
+            "audio_size_bytes": size_bytes,
+            "audio_mime": "audio/wav",
+        }
 
 
 # Singleton instance

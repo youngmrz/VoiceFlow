@@ -1,11 +1,8 @@
 import sqlite3
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
-import json
-from services.logger import get_logger
-
-log = get_logger("database")
+from services.logger import debug
 
 
 class DatabaseService:
@@ -46,8 +43,31 @@ class DatabaseService:
             )
         """)
 
+        # Add audio attachment columns if they don't exist (lightweight migration)
+        self._ensure_history_audio_columns(cursor)
+
         conn.commit()
         conn.close()
+
+    def _ensure_history_audio_columns(self, cursor: sqlite3.Cursor) -> None:
+        """Ensure audio attachment columns exist on history (idempotent)."""
+        columns = {
+            "audio_relpath": "TEXT",
+            "audio_duration_ms": "INTEGER",
+            "audio_size_bytes": "INTEGER",
+            "audio_mime": "TEXT"
+        }
+
+        cursor.execute("PRAGMA table_info(history)")
+        existing = {row[1] for row in cursor.fetchall()}
+
+        for name, col_type in columns.items():
+            if name not in existing:
+                try:
+                    cursor.execute(f"ALTER TABLE history ADD COLUMN {name} {col_type}")
+                    debug(f"Added column {name} to history table")
+                except sqlite3.OperationalError as exc:
+                    debug(f"Failed to add column {name}: {exc}")
 
     # Settings methods
     def get_setting(self, key: str, default: str = None) -> Optional[str]:
@@ -77,7 +97,14 @@ class DatabaseService:
         return {row["key"]: row["value"] for row in rows}
 
     # History methods
-    def add_history(self, text: str) -> int:
+    def add_history(
+        self,
+        text: str,
+        audio_relpath: Optional[str] = None,
+        audio_duration_ms: Optional[int] = None,
+        audio_size_bytes: Optional[int] = None,
+        audio_mime: Optional[str] = None,
+    ) -> int:
         char_count = len(text)
         word_count = len(text.split())
         created_at = datetime.now().isoformat()
@@ -85,40 +112,129 @@ class DatabaseService:
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO history (text, char_count, word_count, created_at)
-               VALUES (?, ?, ?, ?)""",
-            (text, char_count, word_count, created_at)
+            """INSERT INTO history (
+                   text, char_count, word_count, created_at,
+                   audio_relpath, audio_duration_ms, audio_size_bytes, audio_mime
+               )
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                text,
+                char_count,
+                word_count,
+                created_at,
+                audio_relpath,
+                audio_duration_ms,
+                audio_size_bytes,
+                audio_mime,
+            )
         )
         history_id = cursor.lastrowid
         conn.commit()
         conn.close()
         return history_id
 
-    def get_history(self, limit: int = 100, offset: int = 0, search: str = None) -> list:
+    def update_history_audio(
+        self,
+        history_id: int,
+        audio_relpath: str,
+        audio_duration_ms: Optional[int],
+        audio_size_bytes: Optional[int],
+        audio_mime: Optional[str] = None,
+    ) -> None:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE history
+            SET audio_relpath = ?, audio_duration_ms = ?, audio_size_bytes = ?, audio_mime = ?
+            WHERE id = ?
+            """,
+            (audio_relpath, audio_duration_ms, audio_size_bytes, audio_mime, history_id),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_history(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        search: str = None,
+        include_audio_meta: bool = False,
+    ) -> list:
+        """Fetch history entries, optionally including audio metadata."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        if search:
-            cursor.execute(
-                """SELECT * FROM history
-                   WHERE text LIKE ?
-                   ORDER BY created_at DESC
-                   LIMIT ? OFFSET ?""",
-                (f"%{search}%", limit, offset)
-            )
-        else:
-            cursor.execute(
-                """SELECT * FROM history
-                   ORDER BY created_at DESC
-                   LIMIT ? OFFSET ?""",
-                (limit, offset)
-            )
+        base_query = """
+            SELECT
+                id,
+                text,
+                char_count,
+                word_count,
+                created_at,
+                audio_relpath,
+                audio_duration_ms,
+                audio_size_bytes,
+                audio_mime,
+                CASE WHEN audio_relpath IS NOT NULL THEN 1 ELSE 0 END AS has_audio
+            FROM history
+        """
 
+        params = []
+        if search:
+            base_query += " WHERE text LIKE ?"
+            params.append(f"%{search}%")
+
+        base_query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        cursor.execute(base_query, params)
         rows = cursor.fetchall()
         conn.close()
-        return [dict(row) for row in rows]
+
+        entries = [dict(row) for row in rows]
+        for entry in entries:
+            entry["has_audio"] = bool(entry.get("has_audio"))
+
+        if not include_audio_meta:
+            for entry in entries:
+                # Remove heavy meta unless explicitly requested
+                entry.pop("audio_duration_ms", None)
+                entry.pop("audio_size_bytes", None)
+                entry.pop("audio_mime", None)
+                entry.pop("audio_relpath", None)
+        return entries
+
+    def get_history_entry(self, history_id: int) -> Optional[dict]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                id,
+                text,
+                char_count,
+                word_count,
+                created_at,
+                audio_relpath,
+                audio_duration_ms,
+                audio_size_bytes,
+                audio_mime
+            FROM history
+            WHERE id = ?
+            """,
+            (history_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
 
     def delete_history(self, history_id: int):
+        entry = self.get_history_entry(history_id)
+
+        if entry and entry.get("audio_relpath"):
+            self._delete_audio_file(entry["audio_relpath"])
+
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM history WHERE id = ?", (history_id,))
@@ -130,11 +246,20 @@ class DatabaseService:
         if days < 0:
             return
 
-        from datetime import timedelta
         cutoff = (datetime.now() - timedelta(days=days)).isoformat()
 
         conn = self._get_connection()
         cursor = conn.cursor()
+
+        # Collect audio paths before deletion
+        cursor.execute(
+            "SELECT audio_relpath FROM history WHERE created_at < ? AND audio_relpath IS NOT NULL",
+            (cutoff,),
+        )
+        rows = cursor.fetchall()
+        for row in rows:
+            self._delete_audio_file(row["audio_relpath"])
+
         cursor.execute("DELETE FROM history WHERE created_at < ?", (cutoff,))
         conn.commit()
         conn.close()
@@ -170,7 +295,7 @@ class DatabaseService:
             "totalCharacters": int(row["total_characters"]),
             "streakDays": streak,
         }
-        log.debug("Stats retrieved", **result)
+        debug(f"Database get_stats: {result}")
         return result
 
     def reset_all_data(self):
@@ -186,7 +311,16 @@ class DatabaseService:
 
         conn.commit()
         conn.close()
-        log.info("All data has been reset")
+        debug("All data has been reset")
+
+        # Remove audio files
+        audio_dir = self.db_path.parent / "audio"
+        if audio_dir.exists():
+            for file in audio_dir.glob("*"):
+                try:
+                    file.unlink()
+                except Exception as exc:
+                    debug(f"Failed to delete audio file during reset: {exc}")
 
     def _calculate_streak(self, days: list) -> int:
         """Calculate consecutive days streak from list of date strings."""
@@ -213,3 +347,18 @@ class DatabaseService:
                 break
 
         return streak
+
+    def _delete_audio_file(self, relpath: str) -> None:
+        """Delete an audio file, ignoring missing files."""
+        try:
+            data_dir = self.db_path.parent.resolve()
+            audio_root = (data_dir / "audio").resolve()
+            path = (data_dir / relpath).resolve()
+            try:
+                path.relative_to(audio_root)
+            except ValueError:
+                return
+            if path.exists():
+                path.unlink()
+        except Exception as exc:
+            debug(f"Failed to delete audio file {relpath}: {exc}")

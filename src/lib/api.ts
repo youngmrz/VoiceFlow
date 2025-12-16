@@ -1,5 +1,11 @@
 import { rpc } from "pyloid-js";
-import type { Settings, HistoryEntry, Options, Stats, ModelInfo } from "./types";
+import type {
+  Settings,
+  HistoryEntry,
+  Options,
+  Stats,
+  ModelInfo,
+} from "./types";
 
 export const api = {
   async getSettings(): Promise<Settings> {
@@ -21,9 +27,14 @@ export const api = {
   async getHistory(
     limit = 100,
     offset = 0,
-    search?: string
+    search?: string,
+    include_audio_meta?: boolean
   ): Promise<HistoryEntry[]> {
-    return rpc.call("get_history", { limit, offset, search });
+    return rpc.call("get_history", { limit, offset, search, include_audio_meta });
+  },
+
+  async getHistoryAudio(historyId: number): Promise<{ base64: string; mime: string; fileName?: string; sizeBytes?: number; durationMs?: number }> {
+    return rpc.call("get_history_audio", { history_id: historyId });
   },
 
   async deleteHistory(historyId: number): Promise<void> {

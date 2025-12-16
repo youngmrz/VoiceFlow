@@ -6,6 +6,7 @@ export interface Settings {
   theme: "system" | "light" | "dark";
   onboardingComplete: boolean;
   microphone: number;
+  saveAudioToHistory: boolean;
 }
 
 export interface HistoryEntry {
@@ -14,6 +15,11 @@ export interface HistoryEntry {
   char_count: number;
   word_count: number;
   created_at: string;
+  has_audio?: boolean;
+  audio_relpath?: string | null;
+  audio_duration_ms?: number | null;
+  audio_size_bytes?: number | null;
+  audio_mime?: string | null;
 }
 
 export interface Stats {

@@ -18,6 +18,7 @@ import {
   Palette,
   FolderOpen,
   Trash2,
+  FileAudio,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Settings, Options } from "@/lib/types";
@@ -333,6 +334,33 @@ export function SettingsTab() {
                 ))}
               </SelectContent>
             </Select>
+          </BentoSettingCard>
+
+          {/* 6. Audio History (Span 6) */}
+          <BentoSettingCard
+            title="History Audio"
+            description="Optionally keep your dictation audio with each entry"
+            icon={FileAudio}
+            className="md:col-span-6 lg:col-span-6"
+          >
+            <div className="mt-auto flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+              <Label
+                htmlFor="save-audio-history"
+                className="font-medium cursor-pointer"
+              >
+                Save dictation audio to History
+              </Label>
+              <Switch
+                id="save-audio-history"
+                checked={settings.saveAudioToHistory}
+                onCheckedChange={(checked) =>
+                  updateSetting("saveAudioToHistory", checked)
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Audio stays on your device. When enabled, History items show an Audio badge with playback.
+            </p>
           </BentoSettingCard>
 
           {/* 6. System (Auto Start) (Span 4) */}

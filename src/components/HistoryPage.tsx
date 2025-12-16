@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
-import { Search, Copy, Trash2, CalendarDays, Clock, Mic } from "lucide-react";
+import { Search, Copy, Trash2, CalendarDays, Clock, Mic, FileAudio } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { base64ToBlobUrl, revokeUrl, isInvalidAudioPayload } from "@/lib/audio";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -11,13 +19,17 @@ export function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioMeta, setAudioMeta] = useState<{ fileName?: string; mime?: string; durationMs?: number } | null>(null);
+  const [loadingAudioFor, setLoadingAudioFor] = useState<number | null>(null);
 
-  // Reusing the same load logic as HistoryTab/HomePage for consistency
+  // Reusing the same load logic as HomePage for consistency
   const loadHistory = async (searchQuery?: string) => {
     setLoading(true);
     try {
       // Fetch 100 items by default for the full page view
-      const data = await api.getHistory(100, 0, searchQuery || undefined);
+      const data = await api.getHistory(100, 0, searchQuery || undefined, false);
       setHistory(data);
     } catch (error) {
       console.error("Failed to load history:", error);
@@ -37,6 +49,10 @@ export function HistoryPage() {
     }, 500);
     return () => clearTimeout(debounce);
   }, [search]);
+
+  useEffect(() => {
+    return () => revokeUrl(audioUrl);
+  }, [audioUrl]);
 
   const handleCopy = async (text: string) => {
     try {
@@ -63,7 +79,33 @@ export function HistoryPage() {
     }
   };
 
+  const handlePlayAudio = async (historyId: number) => {
+    setLoadingAudioFor(historyId);
+    try {
+      const response = await api.getHistoryAudio(historyId);
+      revokeUrl(audioUrl);
+      const url = base64ToBlobUrl(response.base64, response.mime);
+      setAudioUrl(url);
+      setAudioMeta({
+        fileName: response.fileName,
+        mime: response.mime,
+        durationMs: response.durationMs,
+      });
+      setShowPlayer(true);
+    } catch (error) {
+      console.error("Failed to load audio recording:", error);
+      toast.error(isInvalidAudioPayload(error) ? "Audio file is corrupted" : "Audio file not found");
+      revokeUrl(audioUrl);
+      setAudioUrl(null);
+      setShowPlayer(false);
+      setAudioMeta(null);
+    } finally {
+      setLoadingAudioFor(null);
+    }
+  };
+
   const groupedHistory = groupByDate(history);
+  const durationMs = audioMeta?.durationMs;
 
   return (
     <div className="min-h-screen w-full bg-background/50 relative overflow-x-hidden">
@@ -136,47 +178,81 @@ export function HistoryPage() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {entries.map((entry) => (
-                      <Card
-                        key={entry.id}
-                        className="group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm border-border/50 hover:bg-card hover:border-primary/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                      >
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
-                             <Clock className="w-3 h-3" />
-                             {formatTime(entry.created_at)}
-                          </span>
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                             <Button
-                               variant="ghost"
-                               size="icon-sm"
-                               className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                               onClick={() => handleCopy(entry.text)}
-                             >
+                    {entries.map((entry) => {
+                      const hasAudio = !!entry.has_audio;
+                      return (
+                        <Card
+                          key={entry.id}
+                          className="group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm border-border/50 hover:bg-card hover:border-primary/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                        >
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                {formatTime(entry.created_at)}
+                              </span>
+                              {hasAudio && (
+                                <Badge variant="secondary" className="text-[11px] flex items-center gap-1">
+                                  <FileAudio className="w-3 h-3" />
+                                  Audio
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                onClick={() => handleCopy(entry.text)}
+                              >
                                 <Copy className="h-3.5 w-3.5" />
-                             </Button>
-                             <Button
-                               variant="ghost"
-                               size="icon-sm"
-                               className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                               onClick={() => handleDelete(entry.id)}
-                             >
+                              </Button>
+                              {hasAudio && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  onClick={() => handlePlayAudio(entry.id)}
+                                  disabled={loadingAudioFor === entry.id}
+                                >
+                                  <FileAudio className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDelete(entry.id)}
+                              >
                                 <Trash2 className="h-3.5 w-3.5" />
-                             </Button>
+                              </Button>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-2 flex-grow">
+                            <p className="text-base leading-relaxed line-clamp-6 font-medium text-foreground/90 group-hover:text-foreground transition-colors">
+                              {entry.text}
+                            </p>
+                          </CardContent>
+                          <div className="px-6 pb-4 pt-0 mt-auto flex items-center justify-between">
+                             <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/40 group-hover:text-primary/80 transition-colors">
+                                {entry.word_count} words
+                             </div>
+                             {hasAudio && (
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 className="h-6 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10 transition-colors"
+                                 onClick={() => handlePlayAudio(entry.id)}
+                                 disabled={loadingAudioFor === entry.id}
+                               >
+                                 <FileAudio className="w-3 h-3 mr-1" />
+                                 {loadingAudioFor === entry.id ? "Loading..." : "Play"}
+                               </Button>
+                             )}
                           </div>
-                        </CardHeader>
-                        <CardContent className="pt-2 flex-grow">
-                          <p className="text-base leading-relaxed line-clamp-6 font-medium text-foreground/90 group-hover:text-foreground transition-colors">
-                            {entry.text}
-                          </p>
-                        </CardContent>
-                        <div className="px-6 pb-4 pt-0 mt-auto">
-                           <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/40 group-hover:text-primary/80 transition-colors">
-                              {entry.word_count} words
-                           </div>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -185,6 +261,42 @@ export function HistoryPage() {
         </section>
       </div>
     </div>
+
+      <Dialog
+        open={showPlayer}
+        onOpenChange={(open) => {
+          setShowPlayer(open);
+          if (!open) {
+            revokeUrl(audioUrl);
+            setAudioUrl(null);
+            setAudioMeta(null);
+          }
+        }}
+      >
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Audio Recording</DialogTitle>
+        </DialogHeader>
+        {audioUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <FileAudio className="w-4 h-4 text-primary" />
+                <span>{audioMeta?.fileName || "history_audio.wav"}</span>
+              </div>
+              {durationMs ? <span>{Math.round(durationMs / 1000)}s</span> : null}
+            </div>
+            {/* biome-ignore lint/a11y/useMediaCaption: transcript text is already displayed in the history card */}
+            <audio controls autoPlay className="w-full">
+              <source src={audioUrl} type={audioMeta?.mime || "audio/wav"} />
+              Your browser does not support audio playback.
+            </audio>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No audio loaded.</p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
