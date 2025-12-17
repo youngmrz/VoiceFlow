@@ -37,6 +37,11 @@ class Settings:
     theme: str = "system"
     onboarding_complete: bool = False
     microphone: int = -1  # -1 = default device, otherwise device id
+    # Hotkey settings
+    hold_hotkey: str = "ctrl+win"
+    hold_hotkey_enabled: bool = True
+    toggle_hotkey: str = "ctrl+shift+win"
+    toggle_hotkey_enabled: bool = False
 
 
 class SettingsService:
@@ -56,6 +61,11 @@ class SettingsService:
             theme=self.db.get_setting("theme", "system"),
             onboarding_complete=self.db.get_setting("onboarding_complete", "false") == "true",
             microphone=int(self.db.get_setting("microphone", "-1")),
+            # Hotkey settings
+            hold_hotkey=self.db.get_setting("hold_hotkey", "ctrl+win"),
+            hold_hotkey_enabled=self.db.get_setting("hold_hotkey_enabled", "true") == "true",
+            toggle_hotkey=self.db.get_setting("toggle_hotkey", "ctrl+shift+win"),
+            toggle_hotkey_enabled=self.db.get_setting("toggle_hotkey_enabled", "false") == "true",
         )
         self._cache = settings
         return settings
@@ -69,6 +79,10 @@ class SettingsService:
         theme: str = None,
         onboarding_complete: bool = None,
         microphone: int = None,
+        hold_hotkey: str = None,
+        hold_hotkey_enabled: bool = None,
+        toggle_hotkey: str = None,
+        toggle_hotkey_enabled: bool = None,
     ) -> Settings:
         updated = {}
         if language is not None:
@@ -92,6 +106,19 @@ class SettingsService:
         if microphone is not None:
             self.db.set_setting("microphone", str(microphone))
             updated["microphone"] = microphone
+        # Hotkey settings
+        if hold_hotkey is not None:
+            self.db.set_setting("hold_hotkey", hold_hotkey)
+            updated["hold_hotkey"] = hold_hotkey
+        if hold_hotkey_enabled is not None:
+            self.db.set_setting("hold_hotkey_enabled", "true" if hold_hotkey_enabled else "false")
+            updated["hold_hotkey_enabled"] = hold_hotkey_enabled
+        if toggle_hotkey is not None:
+            self.db.set_setting("toggle_hotkey", toggle_hotkey)
+            updated["toggle_hotkey"] = toggle_hotkey
+        if toggle_hotkey_enabled is not None:
+            self.db.set_setting("toggle_hotkey_enabled", "true" if toggle_hotkey_enabled else "false")
+            updated["toggle_hotkey_enabled"] = toggle_hotkey_enabled
 
         if updated:
             log.info("Settings updated", **updated)

@@ -51,16 +51,21 @@ Python backend using Pyloid framework with PySide6:
 - `clipboard.py` - Clipboard operations and paste-at-cursor using pyautogui
 - `settings.py` - Settings management with defaults
 - `database.py` - SQLite database for settings and history (stored at ~/.VoiceFlow/VoiceFlow.db)
+- `logger.py` - Domain-based logging with hybrid format `[timestamp] [LEVEL] [domain] message | {json}`. Supports domains: model, audio, hotkey, settings, database, clipboard, window. Configured with 100MB log rotation.
+- `model_manager.py` - Whisper model download/cache management using huggingface_hub. Provides download progress tracking (percent, speed, ETA), cancellation via CancelToken, and daemon thread execution.
 
 ### Frontend (src/)
 
 React 18 + TypeScript + Vite frontend:
 
-- **App.tsx** - Hash-based routing between `/popup`, `/onboarding`, and `/dashboard`
-- **lib/api.ts** - RPC wrapper using `pyloid-js` to call Python backend methods
-- **lib/types.ts** - TypeScript interfaces for Settings, HistoryEntry, Stats, Options
-- **pages/** - Popup (recording indicator), Onboarding, Dashboard
+- **App.tsx** - Hash-based routing between `/popup`, `/onboarding`, and `/dashboard`. Checks model cache on startup and shows recovery modal if model is missing.
+- **lib/api.ts** - RPC wrapper using `pyloid-js` to call Python backend methods. Includes model management APIs (`getModelInfo`, `startModelDownload`, `cancelModelDownload`).
+- **lib/types.ts** - TypeScript interfaces for Settings, HistoryEntry, Stats, Options, ModelInfo, DownloadProgress
+- **pages/** - Popup (recording indicator), Onboarding (includes model download step), Dashboard
 - **components/** - Feature components plus shadcn/ui components in `components/ui/`
+  - `ModelDownloadProgress.tsx` - Download progress UI with progress bar, speed, ETA, and retry support
+  - `ModelDownloadModal.tsx` - Dialog wrapper for model downloads triggered from settings
+  - `ModelRecoveryModal.tsx` - Startup modal for missing model recovery
 
 ### Frontend-Backend Communication
 
@@ -87,16 +92,31 @@ popup_window.invoke('popup-state', {'state': 'recording'})
 8. History saved to database
 9. Popup returns to "idle" state
 
+### Model Download Flow
+
+1. App/Onboarding/Settings triggers model download via `startModelDownload(modelName)`
+2. `ModelManager` creates daemon thread, starts `huggingface_hub.snapshot_download()`
+3. Custom tqdm class captures progress, sends updates via callback (throttled to 10/sec)
+4. Frontend receives `download-progress` events with percent, speed, ETA
+5. User can cancel via `cancelModelDownload()` which sets CancelToken
+6. On completion, model is cached in huggingface cache directory
+7. Turbo model uses special repo: `deepdml/faster-whisper-large-v3-turbo-ct2`
+
 ## Key Patterns
 
 - **Singleton controller**: `get_controller()` returns singleton `AppController` instance
 - **UI callbacks**: Backend notifies frontend of state changes via callbacks set in `set_ui_callbacks()`
-- **Background threads**: Model loading and transcription run in daemon threads
+- **Background threads**: Model loading, downloads, and transcription run in daemon threads
+- **Domain logging**: All services use `get_logger(domain)` for structured logging with domains like `model`, `audio`, `hotkey`, etc.
 - **Path alias**: Frontend uses `@/` for `src/` imports (configured in tsconfig.json and vite.config.ts)
 
 ## Testing
 
-Python tests use pytest and are in `src-pyloid/tests/`. Tests that load Whisper models are slow due to model download on first run.
+Python tests use pytest and are in `src-pyloid/tests/`. Test files include:
+- `test_logger.py` - Logger infrastructure tests
+- `test_model_manager.py` - Model download/cache management tests
+- `test_transcription.py` - Transcription service tests (slow, downloads model on first run)
+- `test_audio.py`, `test_hotkey.py`, `test_clipboard.py`, `test_settings.py`, `test_app_controller.py`
 
 ## UI Components
 

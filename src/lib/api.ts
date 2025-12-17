@@ -1,5 +1,5 @@
 import { rpc } from "pyloid-js";
-import type { Settings, HistoryEntry, Options, Stats, ModelInfo } from "./types";
+import type { Settings, HistoryEntry, Options, Stats, ModelInfo, HotkeyValidation } from "./types";
 
 export const api = {
   async getSettings(): Promise<Settings> {
@@ -85,5 +85,13 @@ export const api = {
 
   async cancelModelDownload(): Promise<{ success: boolean; cancelled: boolean }> {
     return rpc.call("cancel_model_download");
+  },
+
+  // Hotkey validation
+  async validateHotkey(
+    hotkey: string,
+    excludeCurrent?: "holdHotkey" | "toggleHotkey"
+  ): Promise<HotkeyValidation> {
+    return rpc.call("validate_hotkey", { hotkey, excludeCurrent });
   },
 };
