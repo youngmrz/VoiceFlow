@@ -19,10 +19,14 @@ import {
   FolderOpen,
   Trash2,
   FileAudio,
+  Keyboard,
+  Hand,
+  ToggleRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Settings, Options } from "@/lib/types";
 import { ModelDownloadModal } from "./ModelDownloadModal";
+import { HotkeyCapture } from "./HotkeyCapture";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,6 +135,19 @@ export function SettingsTab() {
     setPendingModel(null);
     // Settings remain unchanged - dropdown still shows original model
   }, []);
+
+  // Hotkey validation
+  const validateHotkey = useCallback(
+    async (hotkey: string, excludeField: "holdHotkey" | "toggleHotkey") => {
+      try {
+        const result = await api.validateHotkey(hotkey, excludeField);
+        return result;
+      } catch (err) {
+        return { valid: false, error: "Failed to validate hotkey" };
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!settings) return;
@@ -402,6 +419,72 @@ export function SettingsTab() {
                 <FolderOpen className="w-4 h-4" />
                 Open Data Folder
               </button>
+            </div>
+          </BentoSettingCard>
+
+          {/* 8. Keyboard Shortcuts (Full Width) */}
+          <BentoSettingCard
+            title="Keyboard Shortcuts"
+            description="Customize recording hotkeys"
+            icon={Keyboard}
+            className="md:col-span-6 lg:col-span-12"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Hold Mode */}
+              <div className="space-y-4 p-4 rounded-xl bg-secondary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Hand className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-medium">Hold Mode</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Hold to record, release to stop
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.holdHotkeyEnabled}
+                    onCheckedChange={(checked) =>
+                      updateSetting("holdHotkeyEnabled", checked)
+                    }
+                  />
+                </div>
+
+                <HotkeyCapture
+                  value={settings.holdHotkey}
+                  onChange={(hotkey) => updateSetting("holdHotkey", hotkey)}
+                  onValidate={(hotkey) => validateHotkey(hotkey, "holdHotkey")}
+                  disabled={!settings.holdHotkeyEnabled}
+                />
+              </div>
+
+              {/* Toggle Mode */}
+              <div className="space-y-4 p-4 rounded-xl bg-secondary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <ToggleRight className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-medium">Toggle Mode</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Press once to start, press again to stop
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.toggleHotkeyEnabled}
+                    onCheckedChange={(checked) =>
+                      updateSetting("toggleHotkeyEnabled", checked)
+                    }
+                  />
+                </div>
+
+                <HotkeyCapture
+                  value={settings.toggleHotkey}
+                  onChange={(hotkey) => updateSetting("toggleHotkey", hotkey)}
+                  onValidate={(hotkey) => validateHotkey(hotkey, "toggleHotkey")}
+                  disabled={!settings.toggleHotkeyEnabled}
+                />
+              </div>
             </div>
           </BentoSettingCard>
 

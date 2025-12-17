@@ -96,6 +96,14 @@ class AppController:
 
         threading.Thread(target=load_model, daemon=True).start()
 
+        # Configure hotkey service with settings
+        self.hotkey_service.configure(
+            hold_hotkey=settings.hold_hotkey,
+            hold_enabled=settings.hold_hotkey_enabled,
+            toggle_hotkey=settings.toggle_hotkey,
+            toggle_enabled=settings.toggle_hotkey_enabled,
+        )
+
         # Start hotkey listener
         self.hotkey_service.start()
 
@@ -219,6 +227,10 @@ class AppController:
             "onboardingComplete": settings.onboarding_complete,
             "microphone": settings.microphone,
             "saveAudioToHistory": settings.save_audio_to_history,
+            "holdHotkey": settings.hold_hotkey,
+            "holdHotkeyEnabled": settings.hold_hotkey_enabled,
+            "toggleHotkey": settings.toggle_hotkey,
+            "toggleHotkeyEnabled": settings.toggle_hotkey_enabled,
         }
 
     def update_settings(self, **kwargs) -> dict:
@@ -231,6 +243,15 @@ class AppController:
             mapped["onboarding_complete"] = kwargs["onboardingComplete"]
         if "saveAudioToHistory" in kwargs:
             mapped["save_audio_to_history"] = kwargs["saveAudioToHistory"]
+        # Hotkey settings (camelCase to snake_case)
+        if "holdHotkey" in kwargs:
+            mapped["hold_hotkey"] = kwargs["holdHotkey"]
+        if "holdHotkeyEnabled" in kwargs:
+            mapped["hold_hotkey_enabled"] = kwargs["holdHotkeyEnabled"]
+        if "toggleHotkey" in kwargs:
+            mapped["toggle_hotkey"] = kwargs["toggleHotkey"]
+        if "toggleHotkeyEnabled" in kwargs:
+            mapped["toggle_hotkey_enabled"] = kwargs["toggleHotkeyEnabled"]
 
         for key in ["language", "model", "retention", "theme", "microphone"]:
             if key in kwargs:
@@ -250,6 +271,16 @@ class AppController:
             mic_id = mapped["microphone"] if mapped["microphone"] >= 0 else None
             self.audio_service.set_device(mic_id)
             info(f"Microphone updated to: {mic_id}")
+
+        # Reconfigure hotkey service if any hotkey settings changed
+        hotkey_keys = ["hold_hotkey", "hold_hotkey_enabled", "toggle_hotkey", "toggle_hotkey_enabled"]
+        if any(k in mapped for k in hotkey_keys):
+            self.hotkey_service.configure(
+                hold_hotkey=settings.hold_hotkey,
+                hold_enabled=settings.hold_hotkey_enabled,
+                toggle_hotkey=settings.toggle_hotkey,
+                toggle_enabled=settings.toggle_hotkey_enabled,
+            )
 
         return self.get_settings()
 

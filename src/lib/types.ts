@@ -7,6 +7,11 @@ export interface Settings {
   onboardingComplete: boolean;
   microphone: number;
   saveAudioToHistory: boolean;
+  // Hotkey settings
+  holdHotkey: string;
+  holdHotkeyEnabled: boolean;
+  toggleHotkey: string;
+  toggleHotkeyEnabled: boolean;
 }
 
 export interface HistoryEntry {
@@ -64,4 +69,10 @@ export interface DownloadComplete {
   cancelled?: boolean;
   alreadyCached?: boolean;
   error?: string;
+}
+
+export interface HotkeyValidation {
+  valid: boolean;
+  error: string | null;
+  conflicts: boolean;
 }

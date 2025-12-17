@@ -55,6 +55,10 @@ async def update_settings(
     onboardingComplete: Optional[bool] = None,
     microphone: Optional[int] = None,
     saveAudioToHistory: Optional[bool] = None,
+    holdHotkey: Optional[str] = None,
+    holdHotkeyEnabled: Optional[bool] = None,
+    toggleHotkey: Optional[str] = None,
+    toggleHotkeyEnabled: Optional[bool] = None,
 ):
     controller = get_controller()
     kwargs = {}
@@ -74,6 +78,15 @@ async def update_settings(
         kwargs["microphone"] = microphone
     if saveAudioToHistory is not None:
         kwargs["saveAudioToHistory"] = saveAudioToHistory
+    # Hotkey settings
+    if holdHotkey is not None:
+        kwargs["holdHotkey"] = holdHotkey
+    if holdHotkeyEnabled is not None:
+        kwargs["holdHotkeyEnabled"] = holdHotkeyEnabled
+    if toggleHotkey is not None:
+        kwargs["toggleHotkey"] = toggleHotkey
+    if toggleHotkeyEnabled is not None:
+        kwargs["toggleHotkeyEnabled"] = toggleHotkeyEnabled
 
     # Check if onboarding was already complete before this update
     old_settings = controller.get_settings()
@@ -87,6 +100,45 @@ async def update_settings(
         _on_onboarding_complete()
 
     return result
+
+
+@server.method()
+async def validate_hotkey(hotkey: str, excludeCurrent: Optional[str] = None):
+    """Validate a hotkey string and check for conflicts with existing hotkeys.
+
+    Args:
+        hotkey: The hotkey string to validate (e.g., "ctrl+shift+r")
+        excludeCurrent: Field to exclude from conflict check ("holdHotkey" or "toggleHotkey")
+
+    Returns:
+        {"valid": bool, "error": str or None, "conflicts": bool}
+    """
+    from services.hotkey import validate_hotkey as do_validate, are_hotkeys_conflicting
+
+    # Validate format
+    is_valid, error = do_validate(hotkey)
+    if not is_valid:
+        return {"valid": False, "error": error, "conflicts": False}
+
+    # Check for conflicts with existing hotkeys
+    controller = get_controller()
+    settings = controller.get_settings()
+
+    conflicts = False
+    conflict_with = None
+
+    if excludeCurrent != "holdHotkey" and are_hotkeys_conflicting(hotkey, settings.get("holdHotkey", "")):
+        conflicts = True
+        conflict_with = "Hold Mode"
+    elif excludeCurrent != "toggleHotkey" and are_hotkeys_conflicting(hotkey, settings.get("toggleHotkey", "")):
+        conflicts = True
+        conflict_with = "Toggle Mode"
+
+    return {
+        "valid": not conflicts,
+        "error": f"Conflicts with {conflict_with} hotkey" if conflicts else None,
+        "conflicts": conflicts
+    }
 
 
 @server.method()
