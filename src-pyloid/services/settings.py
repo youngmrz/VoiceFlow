@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import Literal
 from .database import DatabaseService
+from .logger import get_logger
+
+log = get_logger("settings")
 
 
 # Whisper model options
@@ -67,21 +70,31 @@ class SettingsService:
         onboarding_complete: bool = None,
         microphone: int = None,
     ) -> Settings:
+        updated = {}
         if language is not None:
             self.db.set_setting("language", language)
+            updated["language"] = language
         if model is not None:
             self.db.set_setting("model", model)
+            updated["model"] = model
         if auto_start is not None:
             self.db.set_setting("auto_start", "true" if auto_start else "false")
+            updated["auto_start"] = auto_start
         if retention is not None:
             self.db.set_setting("retention", str(retention))
+            updated["retention"] = retention
         if theme is not None:
             self.db.set_setting("theme", theme)
+            updated["theme"] = theme
         if onboarding_complete is not None:
             self.db.set_setting("onboarding_complete", "true" if onboarding_complete else "false")
+            updated["onboarding_complete"] = onboarding_complete
         if microphone is not None:
             self.db.set_setting("microphone", str(microphone))
+            updated["microphone"] = microphone
 
+        if updated:
+            log.info("Settings updated", **updated)
         self._cache = None  # Invalidate cache
         return self.get_settings()
 

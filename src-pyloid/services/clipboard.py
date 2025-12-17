@@ -1,7 +1,9 @@
 import pyperclip
 import pyautogui
 import time
-from services.logger import debug, info
+from services.logger import get_logger
+
+log = get_logger("clipboard")
 
 
 class ClipboardService:
@@ -17,7 +19,7 @@ class ClipboardService:
 
     def paste_at_cursor(self, text: str):
         """Copy text to clipboard and paste at current cursor position."""
-        debug(f"paste_at_cursor called with text: '{text}'")
+        log.debug("Paste at cursor called", text_length=len(text))
 
         # Save current clipboard content
         try:
@@ -27,15 +29,15 @@ class ClipboardService:
 
         # Copy our text
         pyperclip.copy(text)
-        debug("Text copied to clipboard")
+        log.debug("Text copied to clipboard")
 
         # Small delay to ensure clipboard is updated
         time.sleep(0.1)
 
         # Simulate Ctrl+V
-        debug("Simulating Ctrl+V...")
+        log.debug("Simulating Ctrl+V")
         pyautogui.hotkey('ctrl', 'v')
-        debug("Paste command sent")
+        log.debug("Paste command sent")
 
         # Small delay before restoring
         time.sleep(0.1)

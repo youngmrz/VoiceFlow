@@ -9,7 +9,12 @@ from services.audio import AudioService
 from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
-from services.logger import info, error, debug, warning, exception
+from services.logger import get_logger
+
+# Domain loggers for different concerns
+model_log = get_logger("model")
+audio_log = get_logger("audio")
+window_log = get_logger("window")
 
 
 class AppController:
@@ -71,12 +76,12 @@ class AppController:
         def load_model():
             self._model_loading = True
             try:
-                info(f"Loading model: {settings.model}...")
+                model_log.info("Loading model", model=settings.model)
                 self.transcription_service.load_model(settings.model)
                 self._model_loaded = True
-                info("Model loaded successfully!")
+                model_log.info("Model loaded successfully", model=settings.model)
             except Exception as e:
-                exception(f"Failed to load model: {e}")
+                model_log.error("Failed to load model", model=settings.model, error=str(e))
                 if self._on_error:
                     self._on_error(f"Failed to load model: {e}")
             finally:
@@ -99,7 +104,7 @@ class AppController:
         """Called when hotkey is pressed."""
         # Don't activate during onboarding
         if not self._popup_enabled:
-            debug("Hotkey ignored - popup disabled (onboarding)")
+            audio_log.debug("Hotkey ignored - popup disabled")
             return
 
         if self._on_recording_start:
@@ -115,10 +120,10 @@ class AppController:
         audio = self.audio_service.stop_recording()
 
         if len(audio) == 0:
-            warning("No audio recorded")
+            audio_log.warning("No audio recorded")
             return
 
-        info(f"Recorded {len(audio)} samples")
+        audio_log.info("Audio recorded", samples=len(audio))
 
         # Transcribe in background
         def transcribe():
@@ -127,33 +132,33 @@ class AppController:
                 wait_time = 0
                 while not self._model_loaded and wait_time < 30:
                     if not self._model_loading:
-                        warning("Model not loaded and not loading, skipping transcription")
+                        model_log.warning("Model not loaded and not loading, skipping transcription")
                         if self._on_transcription_complete:
                             self._on_transcription_complete("")
                         return
-                    info(f"Waiting for model to load... ({wait_time}s)")
+                    model_log.info("Waiting for model to load", wait_seconds=wait_time)
                     time.sleep(1)
                     wait_time += 1
 
                 if not self._model_loaded:
-                    error("Model load timeout, skipping transcription")
+                    model_log.error("Model load timeout, skipping transcription")
                     if self._on_transcription_complete:
                         self._on_transcription_complete("")
                     return
 
                 settings = self.settings_service.get_settings()
-                info(f"Transcribing with language: {settings.language}")
+                model_log.info("Transcribing", language=settings.language)
 
                 text = self.transcription_service.transcribe(
                     audio,
                     language=settings.language,
                 )
 
-                info(f"Transcription result: '{text}'")
+                model_log.info("Transcription complete", text_length=len(text) if text else 0)
 
                 if text:
                     # Paste at cursor
-                    info("Pasting text at cursor...")
+                    audio_log.debug("Pasting text at cursor")
                     self.clipboard_service.paste_at_cursor(text)
 
                     # Save to history
@@ -162,12 +167,12 @@ class AppController:
                     if self._on_transcription_complete:
                         self._on_transcription_complete(text)
                 else:
-                    warning("No text transcribed (empty result)")
+                    model_log.warning("No text transcribed (empty result)")
                     if self._on_transcription_complete:
                         self._on_transcription_complete("")
 
             except Exception as e:
-                exception(f"Transcription error: {e}")
+                model_log.error("Transcription error", error=str(e))
                 if self._on_error:
                     self._on_error(f"Transcription failed: {e}")
                 # Still notify completion to reset UI state
@@ -195,7 +200,6 @@ class AppController:
         }
 
     def update_settings(self, **kwargs) -> dict:
-        debug(f"update_settings called with: {kwargs}")
         # Convert camelCase to snake_case
         mapped = {}
         if "autoStart" in kwargs:
@@ -205,8 +209,6 @@ class AppController:
         for key in ["language", "model", "retention", "theme", "microphone"]:
             if key in kwargs:
                 mapped[key] = kwargs[key]
-
-        debug(f"Mapped settings: {mapped}")
         settings = self.settings_service.update_settings(**mapped)
 
         # Reload model if changed
@@ -219,7 +221,6 @@ class AppController:
         if "microphone" in mapped:
             mic_id = mapped["microphone"] if mapped["microphone"] >= 0 else None
             self.audio_service.set_device(mic_id)
-            info(f"Microphone updated to: {mic_id}")
 
         return self.get_settings()
 
@@ -245,31 +246,31 @@ class AppController:
 
     def stop_recording(self):
         """Manually stop recording (called from stop button)."""
-        debug("Manual stop_recording called")
+        audio_log.debug("Manual stop_recording called")
         self.hotkey_service.force_deactivate()
 
     def start_test_recording(self):
         """Start recording for onboarding test (no hotkey needed)."""
-        debug("Starting test recording")
+        audio_log.debug("Starting test recording")
         self.audio_service.start_recording()
 
     def stop_test_recording(self) -> dict:
         """Stop test recording, transcribe, and return result (no paste/history)."""
-        debug("Stopping test recording")
+        audio_log.debug("Stopping test recording")
         audio = self.audio_service.stop_recording()
 
         if len(audio) == 0:
-            warning("No audio recorded in test")
+            audio_log.warning("No audio recorded in test")
             return {"success": False, "error": "No audio recorded", "transcript": ""}
 
-        info(f"Test recorded {len(audio)} samples")
+        audio_log.info("Test audio recorded", samples=len(audio))
 
         # Wait for model if needed
         wait_time = 0
         while not self._model_loaded and wait_time < 10:
             if not self._model_loading:
                 return {"success": False, "error": "Model not loaded", "transcript": ""}
-            debug(f"Waiting for model... ({wait_time}s)")
+            model_log.debug("Waiting for model", wait_seconds=wait_time)
             time.sleep(0.5)
             wait_time += 0.5
 
@@ -282,33 +283,32 @@ class AppController:
                 audio,
                 language=settings.language,
             )
-            info(f"Test transcription: '{text}'")
+            model_log.info("Test transcription complete", text_length=len(text) if text else 0)
             return {"success": True, "transcript": text or ""}
         except Exception as e:
-            exception(f"Test transcription error: {e}")
+            model_log.error("Test transcription error", error=str(e))
             return {"success": False, "error": str(e), "transcript": ""}
 
     def open_data_folder(self):
         """Open the folder containing application data."""
         try:
             folder_path = str(self.db.db_path.parent)
-            info(f"Opening data folder: {folder_path}")
+            window_log.info("Opening data folder", path=folder_path)
             os.startfile(folder_path)
         except Exception as e:
-            error(f"Failed to open data folder: {e}")
+            window_log.error("Failed to open data folder", error=str(e))
 
     def set_popup_enabled(self, enabled: bool):
         """Enable or disable the popup/hotkey functionality."""
         self._popup_enabled = enabled
-        debug(f"Popup {'enabled' if enabled else 'disabled'}")
+        window_log.debug("Popup state changed", enabled=enabled)
 
     def reset_all_data(self):
         """Reset all data and return to fresh state."""
-        info("Resetting all user data...")
+        window_log.info("Resetting all user data")
         self.db.reset_all_data()
         # Reset settings service cache
         self.settings_service._settings = None
-        info("All data has been reset")
 
 
 # Singleton instance

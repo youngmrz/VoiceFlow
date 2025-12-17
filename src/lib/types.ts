@@ -36,3 +36,26 @@ export interface Options {
   themeOptions: string[];
   microphones: Microphone[];
 }
+
+export interface ModelInfo {
+  name: string;
+  sizeBytes: number;
+  cached: boolean;
+}
+
+export interface DownloadProgress {
+  model: string;
+  percent: number;
+  downloadedBytes: number;
+  totalBytes: number;
+  speedBps: number;
+  etaSeconds: number;
+}
+
+export interface DownloadComplete {
+  model: string;
+  success: boolean;
+  cancelled?: boolean;
+  alreadyCached?: boolean;
+  error?: string;
+}

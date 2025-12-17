@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Mic, Home, History, Settings, Sparkles, Github, Heart, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 const GITHUB_REPO_URL = "https://github.com/infiniV/VoiceFlow";
 
@@ -103,25 +104,21 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
         {/* Community Links */}
         <div className="space-y-1">
-          <a
-            href={`${GITHUB_REPO_URL}/issues`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => api.openExternalUrl(`${GITHUB_REPO_URL}/issues`)}
             className="flex items-center gap-3 px-4 py-2.5 w-full rounded-xl text-xs font-medium text-sidebar-foreground/60 hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
           >
             <MessageSquare className="h-4 w-4" />
             Report Issue
-          </a>
+          </button>
 
-          <a
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => api.openExternalUrl(GITHUB_REPO_URL)}
             className="flex items-center gap-3 px-4 py-2.5 w-full rounded-xl text-xs font-medium text-sidebar-foreground/60 hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
           >
             <Github className="h-4 w-4" />
             Star on GitHub
-          </a>
+          </button>
 
           {/* Footer info */}
           <div className="pt-3 px-4 flex items-center justify-between text-[10px] text-sidebar-foreground/30 font-mono">

@@ -2,7 +2,15 @@ import numpy as np
 from typing import Optional
 from faster_whisper import WhisperModel
 import threading
-from services.logger import debug, info as log_info
+from services.logger import get_logger
+from services.model_manager import MODEL_REPOS
+
+log = get_logger("model")
+
+
+def _get_model_id(model_name: str) -> str:
+    """Get the HuggingFace repo ID for a model name."""
+    return MODEL_REPOS.get(model_name, model_name)
 
 
 class TranscriptionService:
@@ -20,9 +28,12 @@ class TranscriptionService:
 
             self._loading = True
             try:
+                # Get the correct model ID (repo ID for non-standard models)
+                model_id = _get_model_id(model_name)
+
                 # Use CPU for broader compatibility, can add CUDA support later
                 self._model = WhisperModel(
-                    model_name,
+                    model_id,
                     device="cpu",
                     compute_type="int8",  # Faster on CPU
                 )
@@ -60,7 +71,7 @@ class TranscriptionService:
         # Transcribe
         language_arg = None if language == "auto" else language
 
-        debug(f"Audio stats: len={len(audio)}, max={np.abs(audio).max():.4f}, mean={np.abs(audio).mean():.6f}")
+        log.debug("Audio stats", length=len(audio), max_amplitude=float(np.abs(audio).max()), mean_amplitude=float(np.abs(audio).mean()))
 
         segments, info = self._model.transcribe(
             audio,
@@ -75,7 +86,7 @@ class TranscriptionService:
 
         # Combine all segments
         segments_list = list(segments)
-        debug(f"Got {len(segments_list)} segments")
+        log.debug("Transcription segments", segment_count=len(segments_list))
         text_parts = [segment.text for segment in segments_list]
         text = " ".join(text_parts).strip()
 

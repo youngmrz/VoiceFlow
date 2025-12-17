@@ -12,6 +12,7 @@ import {
   Cpu,
   Sparkles,
   Keyboard,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AudioVisualizer } from "@/components/AudioVisualizer";
+import { ModelDownloadProgress } from "@/components/ModelDownloadProgress";
 import { api } from "@/lib/api";
 import type { Settings, Options } from "@/lib/types";
 import {
@@ -436,6 +438,12 @@ const STEPS_CONFIG = [
     icon: Cpu,
   },
   {
+    id: "download",
+    title: "Download Model",
+    subtitle: "Downloading your selected AI model for offline use.",
+    icon: Download,
+  },
+  {
     id: "theme",
     title: "Personalize",
     subtitle: "Choose your theme and startup preferences.",
@@ -525,6 +533,21 @@ export function Onboarding() {
 
   const nextStep = () => setStep((s) => s + 1);
   const prevStep = () => setStep((s) => s - 1);
+
+  // Handle download completion - auto-advance to next step
+  const handleDownloadComplete = (success: boolean) => {
+    if (success) {
+      // Small delay for UX before auto-advancing
+      setTimeout(() => {
+        nextStep();
+      }, 1000);
+    }
+  };
+
+  // Handle download cancellation - go back to model selection
+  const handleDownloadCancel = () => {
+    prevStep();
+  };
 
   // --- Render States ---
 
@@ -621,6 +644,15 @@ export function Onboarding() {
         );
       case 3:
         return (
+          <ModelDownloadProgress
+            modelName={model}
+            onComplete={handleDownloadComplete}
+            onCancel={handleDownloadCancel}
+            autoStart={true}
+          />
+        );
+      case 4:
+        return (
           <StepTheme
             theme={theme}
             setTheme={setTheme}
@@ -628,12 +660,15 @@ export function Onboarding() {
             setAutoStart={setAutoStart}
           />
         );
-      case 4:
+      case 5:
         return <StepFinal />;
       default:
         return null;
     }
   };
+
+  // Check if current step is the download step (should hide navigation)
+  const isDownloadStep = step === 3;
 
   return (
     <main className="min-h-screen flex flex-col bg-background relative overflow-hidden selection:bg-primary/20">
@@ -704,45 +739,47 @@ export function Onboarding() {
           {renderStepContent()}
         </div>
 
-        {/* Navigation - Fixed at bottom */}
-        <div className="flex items-center justify-center gap-4 pt-8 mt-auto">
-          {!isFirstStep && (
-            <Button
-              variant="ghost"
-              size="lg"
-              onClick={prevStep}
-              className="rounded-xl text-muted-foreground hover:text-foreground px-6"
-            >
-              <ArrowLeft className="mr-2 w-4 h-4" />
-              Back
-            </Button>
-          )}
-
-          <Button
-            variant="glow"
-            size="lg"
-            onClick={isLastStep ? handleFinish : nextStep}
-            disabled={saving}
-            className="rounded-xl min-w-[160px]"
-          >
-            {saving ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : isLastStep ? (
-              <>
-                Get Started
-                <Check className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                Continue
-                <ArrowRight className="w-4 h-4" />
-              </>
+        {/* Navigation - Fixed at bottom (hidden during download) */}
+        {!isDownloadStep && (
+          <div className="flex items-center justify-center gap-4 pt-8 mt-auto">
+            {!isFirstStep && (
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={prevStep}
+                className="rounded-xl text-muted-foreground hover:text-foreground px-6"
+              >
+                <ArrowLeft className="mr-2 w-4 h-4" />
+                Back
+              </Button>
             )}
-          </Button>
-        </div>
+
+            <Button
+              variant="glow"
+              size="lg"
+              onClick={isLastStep ? handleFinish : nextStep}
+              disabled={saving}
+              className="rounded-xl min-w-[160px]"
+            >
+              {saving ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : isLastStep ? (
+                <>
+                  Get Started
+                  <Check className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

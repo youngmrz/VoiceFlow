@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Settings, Options } from "@/lib/types";
+import { ModelDownloadModal } from "./ModelDownloadModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,10 @@ export function SettingsTab() {
   const [options, setOptions] = useState<Options | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Model download modal state
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [pendingModel, setPendingModel] = useState<string | null>(null);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -81,6 +86,50 @@ export function SettingsTab() {
       setSettings(settings); // Revert
     }
   };
+
+  // Handle model change - check if download needed
+  const handleModelChange = useCallback(
+    async (newModel: string) => {
+      if (!settings) return;
+
+      try {
+        const modelInfo = await api.getModelInfo(newModel);
+
+        if (modelInfo.cached) {
+          // Model is cached, just update settings
+          updateSetting("model", newModel);
+        } else {
+          // Model needs download - show modal
+          setPendingModel(newModel);
+          setDownloadModalOpen(true);
+        }
+      } catch (err) {
+        console.error("Failed to get model info:", err);
+        toast.error("Failed to check model status");
+      }
+    },
+    [settings]
+  );
+
+  // Handle download complete
+  const handleDownloadComplete = useCallback(
+    (success: boolean) => {
+      if (success && pendingModel) {
+        // Download succeeded, update settings
+        updateSetting("model", pendingModel);
+      }
+      setDownloadModalOpen(false);
+      setPendingModel(null);
+    },
+    [pendingModel]
+  );
+
+  // Handle download cancel
+  const handleDownloadCancel = useCallback(() => {
+    setDownloadModalOpen(false);
+    setPendingModel(null);
+    // Settings remain unchanged - dropdown still shows original model
+  }, []);
 
   useEffect(() => {
     if (!settings) return;
@@ -189,7 +238,7 @@ export function SettingsTab() {
           >
             <Select
               value={settings.model}
-              onValueChange={(value) => updateSetting("model", value)}
+              onValueChange={handleModelChange}
             >
               <SelectTrigger className="mt-auto h-12 rounded-xl">
                 <SelectValue />
@@ -383,6 +432,16 @@ export function SettingsTab() {
           </BentoSettingCard>
         </div>
       </div>
+
+      {/* Model Download Modal */}
+      {pendingModel && (
+        <ModelDownloadModal
+          open={downloadModalOpen}
+          modelName={pendingModel}
+          onComplete={handleDownloadComplete}
+          onCancel={handleDownloadCancel}
+        />
+      )}
     </div>
   );
 }

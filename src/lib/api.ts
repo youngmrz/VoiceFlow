@@ -1,5 +1,5 @@
 import { rpc } from "pyloid-js";
-import type { Settings, HistoryEntry, Options, Stats } from "./types";
+import type { Settings, HistoryEntry, Options, Stats, ModelInfo } from "./types";
 
 export const api = {
   async getSettings(): Promise<Settings> {
@@ -50,6 +50,10 @@ export const api = {
     await rpc.call("open_data_folder");
   },
 
+  async openExternalUrl(url: string): Promise<void> {
+    await rpc.call("open_external_url", { url });
+  },
+
   async setPopupEnabled(enabled: boolean): Promise<void> {
     await rpc.call("set_popup_enabled", { enabled });
   },
@@ -68,5 +72,18 @@ export const api = {
 
   async windowClose(): Promise<void> {
     await rpc.call("window_close");
+  },
+
+  // Model Management
+  async getModelInfo(modelName: string): Promise<ModelInfo> {
+    return rpc.call("get_model_info", { model_name: modelName });
+  },
+
+  async startModelDownload(modelName: string): Promise<{ success: boolean; alreadyCached?: boolean; started?: boolean }> {
+    return rpc.call("start_model_download", { model_name: modelName });
+  },
+
+  async cancelModelDownload(): Promise<{ success: boolean; cancelled: boolean }> {
+    return rpc.call("cancel_model_download");
   },
 };

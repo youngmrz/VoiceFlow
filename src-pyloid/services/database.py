@@ -3,7 +3,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 import json
-from services.logger import debug
+from services.logger import get_logger
+
+log = get_logger("database")
 
 
 class DatabaseService:
@@ -168,7 +170,7 @@ class DatabaseService:
             "totalCharacters": int(row["total_characters"]),
             "streakDays": streak,
         }
-        debug(f"Database get_stats: {result}")
+        log.debug("Stats retrieved", **result)
         return result
 
     def reset_all_data(self):
@@ -184,7 +186,7 @@ class DatabaseService:
 
         conn.commit()
         conn.close()
-        debug("All data has been reset")
+        log.info("All data has been reset")
 
     def _calculate_streak(self, days: list) -> int:
         """Calculate consecutive days streak from list of date strings."""

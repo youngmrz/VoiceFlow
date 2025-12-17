@@ -3,12 +3,13 @@ from pyloid.utils import get_production_path, is_production
 from pyloid.serve import pyloid_serve
 from pyloid import Pyloid
 
-from server import server, register_onboarding_complete_callback, register_data_reset_callback, register_window_actions
+from server import server, register_onboarding_complete_callback, register_data_reset_callback, register_window_actions, register_download_progress_callback
 from app_controller import get_controller
-from services.logger import setup_logger, info, error, debug, exception
+from services.logger import setup_logging, get_logger
 
 # Setup logging first thing
-logger = setup_logger()
+setup_logging()
+log = get_logger("window")
 
 # Initialize app
 # Reverting OpenGL attribute to standard
@@ -78,9 +79,9 @@ def get_screen_info():
             else:
                 _screen_width = geometry.width() if hasattr(geometry, 'width') else 1920
                 _screen_height = geometry.height() if hasattr(geometry, 'height') else 1080
-            info(f"Screen size: {_screen_width}x{_screen_height}")
+            log.info("Screen detected", width=_screen_width, height=_screen_height)
     except Exception as e:
-        error(f"Failed to get screen info: {e}")
+        log.error("Failed to get screen info", error=str(e))
 
 
 def resize_popup(width: int, height: int):
@@ -107,13 +108,13 @@ def resize_popup(width: int, height: int):
         )
         qwindow.show()
     except Exception as e:
-        error(f"Failed to resize popup: {e}")
+        log.error("Failed to resize popup", error=str(e))
 
 
 def init_popup():
     """Initialize the recording popup."""
     global popup_window
-    info("init_popup called")
+    log.debug("init_popup called")
 
     try:
         if popup_window is None:
@@ -160,18 +161,18 @@ def init_popup():
 
             # Show the window
             popup_window.show()
-            info("Popup window created and shown")
+            log.info("Popup window created and shown")
 
             # Send initial idle state after a brief delay to ensure page is loaded
             def send_initial_state():
                 send_popup_event('popup-state', {'state': 'idle'})
-                info("Sent initial idle state to popup")
+                log.debug("Sent initial idle state to popup")
 
             QTimer.singleShot(200, send_initial_state)
         else:
-            info("Popup window already exists, skipping creation")
+            log.debug("Popup window already exists, skipping creation")
     except Exception as e:
-        exception(f"Failed to initialize popup: {e}")
+        log.error("Failed to initialize popup", error=str(e))
 
 def send_popup_event(name, detail):
     """Send event to popup window using Pyloid's invoke method."""
@@ -180,21 +181,21 @@ def send_popup_event(name, detail):
         try:
             popup_window.invoke(name, detail)
         except Exception as e:
-            error(f"Failed to send popup event: {e}")
+            log.error("Failed to send popup event", event=name, error=str(e))
 
 def on_recording_start():
-    info("Recording started")
+    log.info("Recording started")
     # Resize to active size for recording
     resize_popup(POPUP_ACTIVE_WIDTH, POPUP_ACTIVE_HEIGHT)
     send_popup_event('popup-state', {'state': 'recording'})
 
 def on_recording_stop():
-    info("Recording stopped - now processing")
+    log.info("Recording stopped - processing")
     # Keep active size during processing
     send_popup_event('popup-state', {'state': 'processing'})
 
 def on_transcription_complete(text: str):
-    info(f"Transcription complete: {text[:50]}...")
+    log.info("Transcription complete", text_length=len(text))
     # Resize back to idle size
     resize_popup(POPUP_IDLE_WIDTH, POPUP_IDLE_HEIGHT)
     send_popup_event('popup-state', {'state': 'idle'})
@@ -206,7 +207,7 @@ def send_main_window_event(name, detail):
         try:
             window.invoke(name, detail)
         except Exception as e:
-            error(f"Failed to send main window event: {e}")
+            log.error("Failed to send main window event", event=name, error=str(e))
 
 def on_amplitude(amp: float):
     # Send to popup if it exists
@@ -218,7 +219,7 @@ def on_amplitude(amp: float):
 def on_onboarding_complete():
     """Called when user completes onboarding - hide main window, show popup."""
     global window
-    info("Onboarding complete - initializing popup")
+    log.info("Onboarding complete - initializing popup")
     # Hide the main window (user can reopen via tray)
     if window:
         window.hide()
@@ -229,21 +230,21 @@ def on_onboarding_complete():
 def hide_popup():
     """Hide the popup window (used when returning to onboarding)."""
     global popup_window
-    info("Hiding popup window")
+    log.debug("Hiding popup window")
     if popup_window:
         try:
             popup_window.hide()
             popup_window.close()
             popup_window = None
-            info("Popup window hidden and destroyed")
+            log.info("Popup window hidden and destroyed")
         except Exception as e:
-            error(f"Failed to hide popup: {e}")
+            log.error("Failed to hide popup", error=str(e))
 
 
 def on_data_reset():
     """Called when user resets all data - show main window, hide popup."""
     global window
-    info("Data reset - returning to onboarding")
+    log.info("Data reset - returning to onboarding")
     # Hide the popup
     hide_popup()
     # Show the main window for onboarding
@@ -253,12 +254,18 @@ def on_data_reset():
             qwindow = window._window._window
             qwindow.showMaximized()
         except Exception as e:
-            error(f"Could not maximize window: {e}")
+            log.error("Could not maximize window", error=str(e))
+
+
+def send_download_progress(event_name: str, data: dict):
+    """Send download progress events to the main window."""
+    send_main_window_event(event_name, data)
 
 
 # Register callbacks
 register_onboarding_complete_callback(on_onboarding_complete)
 register_data_reset_callback(on_data_reset)
+register_download_progress_callback(send_download_progress)
 
 # Set UI callbacks
 controller.set_ui_callbacks(
@@ -275,7 +282,7 @@ controller.initialize()
 # Check if onboarding is complete
 settings = controller.get_settings()
 onboarding_complete = settings.get("onboardingComplete", False)
-info(f"Startup: onboarding_complete={onboarding_complete}")
+log.info("Startup", onboarding_complete=onboarding_complete)
 
 # Get Screen Info for main window
 get_screen_info()
@@ -339,27 +346,21 @@ try:
     # Also set the initial size to this target
     window.set_size(target_width, target_height)
     
-    info(f"Window sizing forced: Min/Default = {target_width}x{target_height}")
+    log.info("Window sizing forced", width=target_width, height=target_height)
 except Exception as e:
-    error(f"Failed to set window size constraints: {e}")
+    log.error("Failed to set window size constraints", error=str(e))
 
 
 if onboarding_complete:
     # Start minimized - user can open via tray icon
-    info("Onboarding already complete - hiding window and scheduling popup init")
+    log.info("Onboarding already complete - hiding window and scheduling popup init")
     window.hide()
     # Initialize popup after a short delay
     QTimer.singleShot(500, init_popup)
 else:
     # Show maximized for onboarding experience
     window.show()
-    try:
-        # Try to maximize the window
-        # qwindow = window._window._window
-        # qwindow.showMaximized()
-        pass
-    except Exception as e:
-        error(f"Could not maximize window: {e}")
+    log.info("Showing onboarding window")
     # Don't initialize popup during onboarding
 
 app.run()

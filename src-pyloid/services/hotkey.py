@@ -1,7 +1,9 @@
 import keyboard
 from typing import Callable, Optional
 import threading
-from services.logger import debug, info
+from services.logger import get_logger
+
+log = get_logger("hotkey")
 
 
 class HotkeyService:
@@ -28,7 +30,7 @@ class HotkeyService:
         """Called when hotkey is pressed."""
         if not self._hotkey_active:
             self._hotkey_active = True
-            info("Hotkey activated! Calling on_activate...")
+            log.info("Hotkey activated")
             if self._on_activate:
                 self._on_activate()
             self._start_max_timer()
@@ -57,13 +59,13 @@ class HotkeyService:
             return
         self._hotkey_active = False
         self._cancel_max_timer()
-        info("Hotkey deactivated! Calling on_deactivate...")
+        log.info("Hotkey deactivated")
         if self._on_deactivate:
             self._on_deactivate()
 
     def force_deactivate(self):
         """Manually force deactivation (e.g., from stop button)."""
-        debug("Force deactivate called")
+        log.debug("Force deactivate called")
         self._deactivate()
 
     def start(self):
@@ -75,7 +77,7 @@ class HotkeyService:
 
         # Register hotkey with keyboard library
         # Use on_press_key for activation and monitor for release
-        info(f"Registering hotkey: {self._hotkey}")
+        log.info("Registering hotkey", hotkey=self._hotkey)
 
         # keyboard library handles Win key properly on Windows
         keyboard.add_hotkey(self._hotkey, self._on_hotkey_press, suppress=False)
@@ -94,7 +96,7 @@ class HotkeyService:
             ctrl_pressed = keyboard.is_pressed('ctrl')
             win_pressed = keyboard.is_pressed('win') or keyboard.is_pressed('windows')
 
-            debug(f"Key released: {event.name}, ctrl={ctrl_pressed}, win={win_pressed}")
+            log.debug("Key released", key=event.name, ctrl_pressed=ctrl_pressed, win_pressed=win_pressed)
 
             if not ctrl_pressed or not win_pressed:
                 self._on_hotkey_release()
