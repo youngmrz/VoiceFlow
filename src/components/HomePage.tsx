@@ -1,23 +1,35 @@
 import { useEffect, useState } from "react";
-import { Copy, Trash2, Clock, CalendarDays, Search, Mic } from "lucide-react";
+import { Copy, Trash2, Clock, CalendarDays, Search, Mic, FileAudio } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { StatsHeader } from "@/components/StatsHeader";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { base64ToBlobUrl, revokeUrl, isInvalidAudioPayload } from "@/lib/audio";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function HomePage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showPlayer, setShowPlayer] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioMeta, setAudioMeta] = useState<{ fileName?: string; mime?: string; durationMs?: number } | null>(null);
+  const [loadingAudioFor, setLoadingAudioFor] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
         setError(null);
-        const data = await api.getHistory(50, 0); // Load more items for the grid
+        const data = await api.getHistory(50, 0, undefined, false); // Load more items for the grid
         setHistory(data);
       } catch (error) {
         console.error("Failed to load history:", error);
@@ -29,6 +41,10 @@ export function HomePage() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    return () => revokeUrl(audioUrl);
+  }, [audioUrl]);
 
   const handleCopy = async (text: string) => {
     try {
@@ -55,11 +71,37 @@ export function HomePage() {
     }
   };
 
+  const handlePlayAudio = async (historyId: number) => {
+    setLoadingAudioFor(historyId);
+    try {
+      const response = await api.getHistoryAudio(historyId);
+      revokeUrl(audioUrl);
+      const url = base64ToBlobUrl(response.base64, response.mime);
+      setAudioUrl(url);
+      setAudioMeta({
+        fileName: response.fileName,
+        mime: response.mime,
+        durationMs: response.durationMs,
+      });
+      setShowPlayer(true);
+    } catch (error) {
+      console.error("Failed to load audio recording:", error);
+      toast.error(isInvalidAudioPayload(error) ? "Audio file is corrupted" : "Audio file not found");
+      revokeUrl(audioUrl);
+      setAudioUrl(null);
+      setShowPlayer(false);
+      setAudioMeta(null);
+    } finally {
+      setLoadingAudioFor(null);
+    }
+  };
+
   const filteredHistory = history.filter((entry) =>
     entry.text.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const groupedHistory = groupByDate(filteredHistory);
+  const durationMs = audioMeta?.durationMs;
 
   return (
     <div className="min-h-screen w-full bg-background/50 relative overflow-x-hidden">
@@ -183,6 +225,8 @@ export function HomePage() {
                         entry={entry}
                         onCopy={handleCopy}
                         onDelete={handleDelete}
+                        onPlayAudio={handlePlayAudio}
+                        isLoadingAudio={loadingAudioFor === entry.id}
                       />
                     ))}
                   </div>
@@ -193,6 +237,42 @@ export function HomePage() {
         </section>
       </div>
     </div>
+
+      <Dialog
+        open={showPlayer}
+        onOpenChange={(open) => {
+          setShowPlayer(open);
+          if (!open) {
+            revokeUrl(audioUrl);
+            setAudioUrl(null);
+            setAudioMeta(null);
+          }
+        }}
+      >
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Audio Recording</DialogTitle>
+        </DialogHeader>
+        {audioUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <FileAudio className="w-4 h-4 text-primary" />
+                <span>{audioMeta?.fileName || "history_audio.wav"}</span>
+              </div>
+              {durationMs ? <span>{Math.round(durationMs / 1000)}s</span> : null}
+            </div>
+            {/* biome-ignore lint/a11y/useMediaCaption: transcript text is already displayed in the history card */}
+            <audio controls autoPlay className="w-full">
+              <source src={audioUrl} type={audioMeta?.mime || "audio/wav"} />
+              Your browser does not support audio playback.
+            </audio>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No audio loaded.</p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -200,18 +280,31 @@ function HistoryCard({
   entry,
   onCopy,
   onDelete,
+  onPlayAudio,
+  isLoadingAudio,
 }: {
   entry: HistoryEntry;
   onCopy: (text: string) => void;
   onDelete: (id: number) => void;
+  onPlayAudio: (id: number) => void;
+  isLoadingAudio: boolean;
 }) {
+  const hasAudio = !!entry.has_audio;
   return (
     <div className="group glass-card flex flex-col justify-between h-full p-5 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-lg">
-          {formatTime(entry.created_at)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-lg">
+            {formatTime(entry.created_at)}
+          </span>
+          {hasAudio && (
+            <Badge variant="secondary" className="text-[11px] flex items-center gap-1">
+              <FileAudio className="w-3 h-3" />
+              Audio
+            </Badge>
+          )}
+        </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
           <Button
             variant="ghost"
@@ -221,6 +314,17 @@ function HistoryCard({
           >
             <Copy className="h-3.5 w-3.5" />
           </Button>
+          {hasAudio && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+              onClick={() => onPlayAudio(entry.id)}
+              disabled={isLoadingAudio}
+            >
+              <FileAudio className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -239,8 +343,22 @@ function HistoryCard({
 
       {/* Footer */}
       <div className="mt-4 pt-3 border-t border-border/30">
-        <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/50 group-hover:text-primary/80 transition-colors">
-          {entry.word_count} words
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/50 group-hover:text-primary/80 transition-colors">
+            {entry.word_count} words
+          </div>
+          {hasAudio && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10 transition-colors"
+              onClick={() => onPlayAudio(entry.id)}
+              disabled={isLoadingAudio}
+            >
+              <FileAudio className="w-3 h-3 mr-1" />
+              {isLoadingAudio ? "Loading..." : "Play"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
