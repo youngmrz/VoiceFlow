@@ -363,7 +363,7 @@ export function SettingsTab() {
             </p>
           </BentoSettingCard>
 
-          {/* 6. System (Auto Start) (Span 4) */}
+          {/* 7. System (Auto Start) (Span 4) */}
           <BentoSettingCard
             title="System"
             description="Startup behavior"
@@ -387,7 +387,7 @@ export function SettingsTab() {
             </div>
           </BentoSettingCard>
 
-          {/* 7. Data Folder (Span 4) */}
+          {/* 8. Data Folder (Span 4) */}
           <BentoSettingCard
             title="Storage"
             description="Local data location"
@@ -405,7 +405,7 @@ export function SettingsTab() {
             </div>
           </BentoSettingCard>
 
-          {/* 8. Danger Zone (Span 4) */}
+          {/* 9. Danger Zone (Span 4) */}
           <BentoSettingCard
             title="Danger Zone"
             description="Irreversible actions"
