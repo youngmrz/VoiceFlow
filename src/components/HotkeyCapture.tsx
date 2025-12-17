@@ -46,6 +46,16 @@ export function HotkeyCapture({
     (e: KeyboardEvent) => {
       if (!isCapturing) return;
 
+      // Handle Escape to cancel
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCapturing(false);
+        setPressedKeys(new Set());
+        setError(null);
+        return;
+      }
+
       e.preventDefault();
       e.stopPropagation();
 
@@ -73,9 +83,15 @@ export function HotkeyCapture({
 
           // Validate
           if (onValidate) {
-            const result = await onValidate(hotkey);
-            if (!result.valid) {
-              setError(result.error);
+            try {
+              const result = await onValidate(hotkey);
+              if (!result.valid) {
+                setError(result.error);
+                setPressedKeys(new Set());
+                return;
+              }
+            } catch {
+              setError("Validation failed");
               setPressedKeys(new Set());
               return;
             }
@@ -128,22 +144,6 @@ export function HotkeyCapture({
 
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [isCapturing]);
-
-  // Escape to cancel
-  useEffect(() => {
-    if (isCapturing) {
-      const handleEscape = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          setIsCapturing(false);
-          setPressedKeys(new Set());
-          setError(null);
-        }
-      };
-
-      window.addEventListener("keydown", handleEscape);
-      return () => window.removeEventListener("keydown", handleEscape);
     }
   }, [isCapturing]);
 

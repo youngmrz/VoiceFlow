@@ -103,7 +103,7 @@ async def update_settings(
 
 
 @server.method()
-async def validate_hotkey(hotkey: str, excludeCurrent: str = None):
+async def validate_hotkey(hotkey: str, excludeCurrent: Optional[str] = None):
     """Validate a hotkey string and check for conflicts with existing hotkeys.
 
     Args:
