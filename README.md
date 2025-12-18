@@ -8,10 +8,10 @@
 
 **Dictate freely with local AI. Zero latency. Zero data leaks. Zero cost.**
 
-VoiceFlow brings the power of OpenAI's Whisper directly to your Windows machine. It runs entirely on your hardware, ensuring your voice data never leaves your device. Designed for privacy, speed, and reliability.
+VoiceFlow brings OpenAI's Whisper directly to your Windows machine. Every word you speak is processed entirely on your hardware—your voice data never leaves your device. Built for privacy-conscious professionals who demand speed and reliability.
 
 <p align="center">
-  <a href="https://github.com/infiniV/VoiceFlow/releases/download/v1.1.1/VoiceFlowSetup-1.1.1.exe">
+  <a href="https://github.com/infiniV/VoiceFlow/releases/download/v1.2.1/VoiceFlowSetup-1.2.1.exe">
     <img src="https://img.shields.io/badge/Download_for_Windows-000000?style=for-the-badge&logo=windows&logoColor=white" alt="Download">
   </a>
   <a href="https://github.com/infiniV/VoiceFlow">
@@ -23,7 +23,7 @@ VoiceFlow brings the power of OpenAI's Whisper directly to your Windows machine.
 
 ### Why Pay for Noise?
 
-Cloud dictation services charge monthly fees for privacy-invasive APIs. VoiceFlow is essentially free, fully local, and yours forever.
+Cloud dictation services charge monthly fees while harvesting your voice data. VoiceFlow is free, fully local, and yours forever.
 
 <p align="center">
   <img src="media/comparison.png" alt="Comparison" width="100%">
@@ -34,39 +34,38 @@ Cloud dictation services charge monthly fees for privacy-invasive APIs. VoiceFlo
 | **Cost** | **$0.00** | $10-15/mo |
 | **Data Privacy** | **100% Local** | Cloud Processed |
 | **Offline Support** | **Full Capability** | None |
-| **Latency** | **Real-time (Local)** | Network Dependent |
-| **RAM Usage** | **~200-300MB** | ~800MB+ |
+| **Latency** | **Real-time** | Network Dependent |
 | **Account Required** | **No** | Yes |
-| **Screen Data Collection** | **None** | Often Required |
+| **Open Source** | **MIT License** | Proprietary |
 
 ---
 
 ### Unbreakable Privacy
 
-Everything runs on localhost. Your microphone data never leaves your RAM. We physically can't sell your data because we never see it.
+Everything runs on localhost. Your microphone data never leaves your RAM. We can't sell your data because we never see it.
 
-*   **Air-Gapped Safe**: Works completely offline.
-*   **Open Source**: Verify the code yourself. Visualized via `View Source`.
-*   **No Logs**: Processed in RAM, then discarded.
+*   **Air-Gapped Safe**: Works completely offline after initial model download.
+*   **Open Source**: Audit every line of code yourself.
+*   **No Telemetry**: Zero tracking, zero analytics, zero cloud calls.
 
 ---
 
-### Usage Flow
+### How It Works
 
-See exactly what VoiceFlow does at every step. No hidden processes, no cloud uploads. Just transparent, local AI.
+No hidden processes, no cloud uploads. Just transparent, local AI at every step.
 
 <p align="center">
   <img src="media/how-it-works.png" alt="How It Works" width="100%">
 </p>
 
 #### 1. Ready
-VoiceFlow waits silently in the background. A minimal indicator shows it's ready.
+VoiceFlow waits silently in your system tray. A minimal popup indicates recording status.
 
 #### 2. Listening
-Hold **`Ctrl+Win`** to speak naturally. Audio stays in RAM only. The interface visualizes your voice amplitude in real-time.
+Activate with your hotkey and speak naturally. Audio stays in RAM only—the interface visualizes your voice amplitude in real-time.
 
 #### 3. Transcribe & Paste
-Release the keys. Local AI processes audio, then auto-pastes text directly at your cursor.
+Release the hotkey. Local AI processes your audio instantly, then auto-pastes text at your cursor.
 
 <p align="center">
   <img src="media/app-dash.png" alt="VoiceFlow Dashboard" width="100%">
@@ -74,32 +73,48 @@ Release the keys. Local AI processes audio, then auto-pastes text directly at yo
 
 ---
 
-### Commercial Power. Zero Tags.
+### Custom Hotkeys
 
-#### Neural Engine
-*   **Tiny / Base** (~75MB): Instant speed for quick commands.
-*   **Small / Medium** (~500MB): Balanced accuracy for general dictation.
-*   **Large-v3** (~3GB): Maximum precision for long-form content.
+Configure your preferred keyboard shortcuts with two recording modes to match your workflow.
 
-#### Features
-*   **Global Hotkey**: `Ctrl+Win` to dictate anywhere.
-*   **99+ Languages**: Auto-detection built-in.
-*   **Local History**: Searchable SQLite database of your transcriptions.
-*   **Auto-Paste**: Types directly into your active window.
+<p align="center">
+  <img src="media/hotkeys.png" alt="Custom Hotkeys" width="100%">
+</p>
+
+*   **Hold Mode**: Hold to record, release to transcribe. Perfect for quick dictation bursts.
+*   **Toggle Mode**: Press once to start, press again to stop. Ideal for longer recordings.
+
+---
+
+### Neural Engine
+
+Choose from 16+ Whisper models optimized for different use cases.
+
+#### Model Categories
+*   **Standard** (Tiny → Large-v3): From 75MB to 3GB. Balance speed and accuracy for your hardware.
+*   **Turbo** (~1.6GB): Best speed-to-quality ratio. Recommended for daily use.
+*   **English-only** (.en variants): Optimized specifically for English with improved accuracy.
+*   **Distilled**: Faster inference with minimal quality loss.
+
+#### Core Features
+*   **99+ Languages**: Automatic language detection built-in.
+*   **Custom Hotkeys**: Configure your own shortcuts with Hold or Toggle modes.
+*   **Local History**: Searchable SQLite database of all your transcriptions.
+*   **Auto-Paste**: Text appears directly at your cursor—no copy-paste needed.
 
 ---
 
 ### Ready to go local?
 
-Join thousands of users who have taken back control of their voice data. Open source and forever free.
+Take back control of your voice data. Open source and forever free.
 
 <p align="center">
-  <a href="https://github.com/infiniV/VoiceFlow/releases/download/v1.1.1/VoiceFlowSetup-1.1.1.exe">
+  <a href="https://github.com/infiniV/VoiceFlow/releases/download/v1.2.1/VoiceFlowSetup-1.2.1.exe">
     <img src="media/footer.png" alt="Download Now" width="100%">
   </a>
 </p>
 
-### [Download Installer v1.1.1 (Windows)](https://github.com/infiniV/VoiceFlow/releases/download/v1.1.1/VoiceFlowSetup-1.1.1.exe)
+### [Download Installer v1.2.1 (Windows)](https://github.com/infiniV/VoiceFlow/releases/download/v1.2.1/VoiceFlowSetup-1.2.1.exe)
 
 *Windows 10/11 • 64-bit • ~150MB*
 
@@ -110,43 +125,30 @@ Join thousands of users who have taken back control of their voice data. Open so
 
 # For Developers
 
-Complete documentation for building and contributing to the VoiceFlow project.
+Build and contribute to VoiceFlow.
 
-### Repository Setup
-
-Clone the repository and install dependencies to initialize the development environment.
+### Quick Start
 
 ```powershell
-# Clone the repository
+# Clone and setup
 git clone https://github.com/infiniV/VoiceFlow.git
 cd VoiceFlow
-
-# Install dependencies (Frontend + Backend)
 pnpm run setup
-```
 
-### Running Locally
-
-Start the development server with hot-reload enabled.
-
-```powershell
+# Development with hot-reload
 pnpm run dev
+
+# Build installer
+pnpm run build:installer
 ```
 
-### Architecture Overview
+### Architecture
 
-*   **Core**: Pyloid (PySide6 + QtWebEngine)
-*   **Inference**: faster-whisper (Optimized)
-*   **Frontend**: React 18, Vite, Tailwind CSS
-*   **UI System**: Shadcn, Lucide React
-
-### Building Distribution
-
-To create the standalone executable and installer locally:
-
-```powershell
-# Build application and installer
-pnpm run build
-```
+| Layer | Technology |
+| :--- | :--- |
+| **Core** | Pyloid (PySide6 + QtWebEngine) |
+| **Inference** | faster-whisper (CTranslate2) |
+| **Frontend** | React 18, Vite, Tailwind CSS v4 |
+| **UI** | shadcn/ui, Lucide React |
 
 [Releases](https://github.com/infiniV/VoiceFlow/releases) • [Issues](https://github.com/infiniV/VoiceFlow/issues) • [License](LICENSE)
