@@ -52,7 +52,7 @@ Python backend using Pyloid framework with PySide6:
 - `settings.py` - Settings management with defaults
 - `database.py` - SQLite database for settings and history (stored at ~/.VoiceFlow/VoiceFlow.db)
 - `logger.py` - Domain-based logging with hybrid format `[timestamp] [LEVEL] [domain] message | {json}`. Supports domains: model, audio, hotkey, settings, database, clipboard, window. Configured with 100MB log rotation.
-- `model_manager.py` - Whisper model download/cache management using huggingface_hub. Provides download progress tracking (percent, speed, ETA), cancellation via CancelToken, and daemon thread execution.
+- `model_manager.py` - Whisper model download/cache management using huggingface_hub. Provides download progress tracking (percent, speed, ETA), cancellation via CancelToken, daemon thread execution, and `clear_cache()` to delete only VoiceFlow's faster-whisper models.
 
 ### Frontend (src/)
 
@@ -124,3 +124,10 @@ Uses shadcn/ui (New York style) with Tailwind CSS v4. Add components via:
 ```bash
 npx shadcn@latest add <component>
 ```
+
+## Git Commit Guidelines
+
+- **Never add co-author lines** to commit messages
+- Keep commit messages concise and descriptive
+- Use conventional commit prefixes: `fix:`, `feat:`, `update:`, `refactor:`, etc.
+- Follow the release guide at `docs/plans/release-guide.md` for creating releases
