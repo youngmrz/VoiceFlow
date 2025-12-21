@@ -231,13 +231,11 @@ const StepHardware = ({
   device,
   setDevice,
   gpuInfo,
-  options,
   onGpuInfoUpdate,
 }: {
   device: string;
   setDevice: (d: string) => void;
   gpuInfo: GpuInfo | null;
-  options: Options;
   onGpuInfoUpdate: () => void;
 }) => {
   const [deviceError, setDeviceError] = useState<string | null>(null);
@@ -352,7 +350,7 @@ const StepHardware = ({
           role="radiogroup"
           aria-label="Select compute device"
         >
-          {DEVICE_OPTIONS.map((d, idx) => {
+          {DEVICE_OPTIONS.map((d) => {
             const isActive = device === d.id;
             const isDisabled = d.id === "cuda" && !gpuInfo?.cudaAvailable;
             const DeviceIcon = d.icon;
@@ -697,7 +695,7 @@ const StepModel = ({
             role="radiogroup"
             aria-label="Select processing model"
           >
-            {MODEL_OPTIONS.map((m, idx) => {
+            {MODEL_OPTIONS.map((m) => {
               const isActive = model === m.id;
               return (
                 <button
@@ -825,7 +823,7 @@ const StepTheme = ({
         role="radiogroup"
         aria-label="Theme selection"
       >
-        {THEME_OPTIONS.map((opt, idx) => {
+        {THEME_OPTIONS.map((opt) => {
           const isActive = theme === opt.val;
           return (
             <button
@@ -1167,7 +1165,6 @@ export function Onboarding() {
             device={device}
             setDevice={setDevice}
             gpuInfo={gpuInfo}
-            options={options}
             onGpuInfoUpdate={refreshGpuInfo}
           />
         );

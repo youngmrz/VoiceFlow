@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Flame, FileText, Type, Settings2, Languages, Cpu, Mic, Zap } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Stats, GpuInfo } from "@/lib/types";
+import type { Stats } from "@/lib/types";
 
 type ConfigData = {
   model: string;
