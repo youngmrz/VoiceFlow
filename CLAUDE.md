@@ -100,7 +100,7 @@ popup_window.invoke('popup-state', {'state': 'recording'})
 4. Frontend receives `download-progress` events with percent, speed, ETA
 5. User can cancel via `cancelModelDownload()` which sets CancelToken
 6. On completion, model is cached in huggingface cache directory
-7. Turbo model uses special repo: `deepdml/faster-whisper-large-v3-turbo-ct2`
+7. Turbo model uses `mobiuslabsgmbh/faster-whisper-large-v3-turbo` (same as faster-whisper internal mapping)
 
 ## Key Patterns
 

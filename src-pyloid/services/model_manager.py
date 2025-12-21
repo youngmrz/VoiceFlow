@@ -60,7 +60,7 @@ MODEL_REPOS = {
     "large-v1": "Systran/faster-whisper-large-v1",
     "large-v2": "Systran/faster-whisper-large-v2",
     "large-v3": "Systran/faster-whisper-large-v3",
-    "turbo": "Systran/faster-whisper-large-v3-turbo",
+    "turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
     # English-only models
     "tiny.en": "Systran/faster-whisper-tiny.en",
     "base.en": "Systran/faster-whisper-base.en",
