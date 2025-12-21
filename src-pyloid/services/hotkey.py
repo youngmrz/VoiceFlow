@@ -126,7 +126,6 @@ class HotkeyService:
         log.info("Hold hotkey activated")
         if self._on_activate:
             self._on_activate()
-        self._start_max_timer()
 
     def _check_hold_release(self, event):
         """Check if hold hotkey should be deactivated on key release."""
@@ -172,7 +171,6 @@ class HotkeyService:
             log.info("Toggle hotkey activated - recording started")
             if self._on_activate:
                 self._on_activate()
-            self._start_max_timer()
         else:
             # Stop recording
             self._deactivate_toggle()
