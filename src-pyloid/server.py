@@ -49,6 +49,7 @@ async def update_settings(
     *,
     language: Optional[str] = None,
     model: Optional[str] = None,
+    device: Optional[str] = None,
     autoStart: Optional[bool] = None,
     retention: Optional[int] = None,
     theme: Optional[str] = None,
@@ -66,6 +67,8 @@ async def update_settings(
         kwargs["language"] = language
     if model is not None:
         kwargs["model"] = model
+    if device is not None:
+        kwargs["device"] = device
     if autoStart is not None:
         kwargs["autoStart"] = autoStart
     if retention is not None:
@@ -145,6 +148,69 @@ async def validate_hotkey(hotkey: str, excludeCurrent: Optional[str] = None):
 async def get_options():
     controller = get_controller()
     return controller.get_options()
+
+
+@server.method()
+async def get_gpu_info():
+    """Get GPU/CUDA information."""
+    controller = get_controller()
+    return controller.get_gpu_info()
+
+
+@server.method()
+async def validate_device(device: str):
+    """Validate a device setting before saving."""
+    controller = get_controller()
+    return controller.validate_device(device)
+
+
+@server.method()
+async def get_cudnn_download_info():
+    """Get info about cuDNN download status."""
+    controller = get_controller()
+    return controller.get_cudnn_download_info()
+
+
+# cuDNN download thread
+_cudnn_download_thread: threading.Thread = None
+
+
+@server.method()
+async def download_cudnn():
+    """Download and install cuDNN libraries in background thread."""
+    global _cudnn_download_thread
+
+    # Check if already downloading
+    if _cudnn_download_thread and _cudnn_download_thread.is_alive():
+        return {"success": True, "started": True, "alreadyRunning": True}
+
+    controller = get_controller()
+
+    def do_download():
+        try:
+            controller.download_cudnn()
+        except Exception as e:
+            log.error("cuDNN download thread error", error=str(e))
+
+    # Start download in background thread
+    _cudnn_download_thread = threading.Thread(target=do_download, daemon=True)
+    _cudnn_download_thread.start()
+
+    return {"success": True, "started": True}
+
+
+@server.method()
+async def get_cudnn_download_progress():
+    """Get current cuDNN download progress."""
+    controller = get_controller()
+    return controller.get_cudnn_download_progress()
+
+
+@server.method()
+async def clear_cuda_libs():
+    """Clear downloaded CUDA libraries (cuDNN + cuBLAS)."""
+    controller = get_controller()
+    return controller.clear_cuda_libs()
 
 
 @server.method()

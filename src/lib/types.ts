@@ -1,6 +1,7 @@
 export interface Settings {
   language: string;
   model: string;
+  device: string;
   autoStart: boolean;
   retention: number;
   theme: "system" | "light" | "dark";
@@ -46,6 +47,7 @@ export interface Options {
   retentionOptions: Record<string, number>;
   themeOptions: string[];
   microphones: Microphone[];
+  deviceOptions: string[];
 }
 
 export interface ModelInfo {
@@ -75,4 +77,44 @@ export interface HotkeyValidation {
   valid: boolean;
   error: string | null;
   conflicts: boolean;
+}
+
+export interface GpuInfo {
+  cudaAvailable: boolean;
+  deviceCount: number;
+  gpuName: string | null;
+  supportedComputeTypes: string[];
+  currentDevice: string;
+  currentComputeType: string;
+  cudnnAvailable: boolean;
+  cudnnMessage: string | null;
+}
+
+export interface DeviceValidation {
+  valid: boolean;
+  error: string | null;
+}
+
+export interface CudnnDownloadInfo {
+  hasNvidiaGpu: boolean;
+  cudnnInstalled: boolean;
+  downloadSizeMb: number;
+}
+
+export interface CudnnDownloadResult {
+  success: boolean;
+  error?: string | null;
+  started?: boolean;
+  alreadyRunning?: boolean;
+}
+
+export interface CudnnDownloadProgress {
+  downloading: boolean;
+  downloadedBytes: number;
+  totalBytes: number;
+  percent: number;
+  error: string | null;
+  complete: boolean;
+  success: boolean;
+  status: string;
 }

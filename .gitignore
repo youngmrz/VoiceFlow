@@ -43,5 +43,3 @@ docs/plans/
 *.spec
 build_error_log.txt
 
-# Installer dev files
-installer/

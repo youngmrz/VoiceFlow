@@ -4,6 +4,7 @@ from faster_whisper import WhisperModel
 import threading
 from services.logger import get_logger
 from services.model_manager import MODEL_REPOS
+from services.gpu import resolve_device, get_compute_type
 
 log = get_logger("model")
 
@@ -17,25 +18,63 @@ class TranscriptionService:
     def __init__(self):
         self._model: Optional[WhisperModel] = None
         self._current_model_name: str = None
+        self._current_device: str = None
+        self._current_compute_type: str = None
         self._loading = False
         self._lock = threading.Lock()
 
-    def load_model(self, model_name: str = "tiny"):
-        """Load or switch Whisper model."""
+    def load_model(self, model_name: str = "tiny", device_preference: str = "auto"):
+        """Load or switch Whisper model.
+
+        Args:
+            model_name: Name of the Whisper model
+            device_preference: "auto", "cpu", or "cuda"
+        """
+        # Resolve device and compute type
+        device = resolve_device(device_preference)
+        compute_type = get_compute_type(device)
+
         with self._lock:
-            if self._current_model_name == model_name and self._model is not None:
-                return  # Already loaded
+            # Check if we need to reload
+            if (self._current_model_name == model_name
+                and self._current_device == device
+                and self._model is not None):
+                return  # Already loaded with same config
 
             self._loading = True
             try:
-                # Use repo_id for loading
                 repo_id = _get_repo_id(model_name)
+                log.info(
+                    "Loading model",
+                    model=model_name,
+                    device=device,
+                    compute_type=compute_type
+                )
                 self._model = WhisperModel(
                     repo_id,
-                    device="cpu",
-                    compute_type="int8",  # Faster on CPU
+                    device=device,
+                    compute_type=compute_type,
                 )
                 self._current_model_name = model_name
+                self._current_device = device
+                self._current_compute_type = compute_type
+                log.info("Model loaded successfully", device=device, compute_type=compute_type)
+            except Exception as e:
+                log.error("Failed to load model", error=str(e), device=device)
+                # If CUDA failed, try falling back to CPU
+                if device == "cuda":
+                    log.warning("CUDA load failed, falling back to CPU")
+                    self._model = WhisperModel(
+                        repo_id,
+                        device="cpu",
+                        compute_type="int8",
+                    )
+                    self._current_model_name = model_name
+                    self._current_device = "cpu"
+                    self._current_compute_type = "int8"
+                    log.info("Model loaded on CPU fallback")
+                else:
+                    raise
             finally:
                 self._loading = False
 
@@ -44,6 +83,14 @@ class TranscriptionService:
 
     def get_current_model(self) -> Optional[str]:
         return self._current_model_name
+
+    def get_current_device(self) -> str:
+        """Get the device currently being used."""
+        return self._current_device or "cpu"
+
+    def get_current_compute_type(self) -> str:
+        """Get the compute type currently being used."""
+        return self._current_compute_type or "int8"
 
     def transcribe(
         self,
@@ -95,3 +142,5 @@ class TranscriptionService:
         with self._lock:
             self._model = None
             self._current_model_name = None
+            self._current_device = None
+            self._current_compute_type = None

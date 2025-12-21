@@ -29,7 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { AudioVisualizer } from "@/components/AudioVisualizer";
 import { ModelDownloadProgress } from "@/components/ModelDownloadProgress";
 import { api } from "@/lib/api";
-import type { Settings, Options } from "@/lib/types";
+import type { Settings, Options, GpuInfo } from "@/lib/types";
 import {
   MODEL_OPTIONS,
   MODEL_CATEGORIES,
@@ -197,6 +197,405 @@ const StepAudio = ({
   );
 };
 
+// Device option configuration
+const DEVICE_OPTIONS = [
+  {
+    id: "auto",
+    label: "Auto",
+    desc: "Recommended",
+    detail: "Best available",
+    description: "Automatically selects the best available compute device. Uses GPU if available and properly configured, otherwise falls back to CPU.",
+    icon: Zap,
+    bestFor: "Most users who want optimal performance without manual configuration.",
+  },
+  {
+    id: "cuda",
+    label: "CUDA GPU",
+    desc: "NVIDIA Only",
+    detail: "Fastest",
+    description: "Uses NVIDIA GPU with CUDA acceleration for maximum transcription speed. Requires compatible NVIDIA GPU with CUDA libraries (cuDNN + cuBLAS).",
+    icon: Cpu,
+    bestFor: "Users with NVIDIA GPUs who want the fastest possible transcription.",
+  },
+  {
+    id: "cpu",
+    label: "CPU Only",
+    desc: "Universal",
+    detail: "Compatible",
+    description: "Uses CPU for transcription. Works on any system but slower than GPU acceleration. Good fallback option.",
+    icon: Cpu,
+    bestFor: "Systems without compatible GPU or when GPU acceleration causes issues.",
+  },
+];
+
+const StepHardware = ({
+  device,
+  setDevice,
+  gpuInfo,
+  options,
+  onGpuInfoUpdate,
+}: {
+  device: string;
+  setDevice: (d: string) => void;
+  gpuInfo: GpuInfo | null;
+  options: Options;
+  onGpuInfoUpdate: () => void;
+}) => {
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<{
+    percent: number;
+    downloadedBytes: number;
+    totalBytes: number;
+  } | null>(null);
+
+  // Poll for download progress while downloading
+  useEffect(() => {
+    if (!downloading) {
+      setDownloadProgress(null);
+      return;
+    }
+
+    const pollProgress = async () => {
+      try {
+        const progress = await api.getCudnnDownloadProgress();
+        if (progress.downloading) {
+          setDownloadProgress({
+            percent: progress.percent,
+            downloadedBytes: progress.downloadedBytes,
+            totalBytes: progress.totalBytes,
+          });
+        } else if (progress.complete) {
+          // Download finished
+          setDownloading(false);
+          if (progress.success) {
+            onGpuInfoUpdate();
+          } else if (progress.error) {
+            setDownloadError(progress.error);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to poll progress:", err);
+      }
+    };
+
+    // Poll every 500ms
+    const interval = setInterval(pollProgress, 500);
+    pollProgress(); // Initial poll
+
+    return () => clearInterval(interval);
+  }, [downloading, onGpuInfoUpdate]);
+
+  const handleDeviceSelect = async (newDevice: string) => {
+    setDeviceError(null);
+
+    // Validate the device selection
+    const validation = await api.validateDevice(newDevice);
+    if (!validation.valid) {
+      setDeviceError(validation.error);
+      return;
+    }
+
+    setDevice(newDevice);
+  };
+
+  const handleDownloadCudnn = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    setDownloadProgress(null);
+    try {
+      const result = await api.downloadCudnn();
+      if (!result.success) {
+        setDownloadError(result.error || "Failed to start download");
+        setDownloading(false);
+      }
+    } catch (err) {
+      setDownloadError("Download failed. Check your internet connection.");
+      setDownloading(false);
+    }
+  };
+
+  // Format bytes to human readable
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const selectedDevice = DEVICE_OPTIONS.find((d) => d.id === device);
+  const showDownloadButton = gpuInfo?.gpuName && !gpuInfo?.cudnnAvailable;
+
+  // Determine resolved device for display
+  const resolvedDevice = device === "auto"
+    ? (gpuInfo?.cudaAvailable ? "CUDA" : "CPU")
+    : device.toUpperCase();
+
+  return (
+    <div className="flex gap-6 animate-in slide-in-from-bottom-4 duration-500 w-full max-w-5xl">
+      {/* Left side - Device selection grid */}
+      <div className="flex-1 space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <Cpu className="w-4 h-4" />
+            Compute Device
+          </span>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+            resolvedDevice === "CUDA"
+              ? "bg-green-500/10 text-green-500"
+              : "bg-muted text-muted-foreground"
+          }`}>
+            Will use: {resolvedDevice}
+          </span>
+        </div>
+
+        <div
+          className="grid grid-cols-3 gap-2"
+          role="radiogroup"
+          aria-label="Select compute device"
+        >
+          {DEVICE_OPTIONS.map((d, idx) => {
+            const isActive = device === d.id;
+            const isDisabled = d.id === "cuda" && !gpuInfo?.cudaAvailable;
+            const DeviceIcon = d.icon;
+
+            return (
+              <button
+                key={d.id}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                disabled={isDisabled}
+                className={`
+                  relative p-4 rounded-xl text-left transition-all duration-200 group
+                  flex flex-col gap-2 animate-in slide-in-from-bottom-4
+                  ${
+                    isActive
+                      ? "glass-strong border-primary/50 shadow-md shadow-primary/10"
+                      : isDisabled
+                        ? "glass-card opacity-50 cursor-not-allowed"
+                        : "glass-card hover:bg-muted/50"
+                  }
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1
+                `}
+                style={{ animationDelay: `${idx * 30}ms` }}
+                onClick={() => !isDisabled && handleDeviceSelect(d.id)}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    isActive ? "bg-primary/20" : "bg-secondary/50"
+                  }`}>
+                    <DeviceIcon className={`w-4 h-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  {isActive && (
+                    <div
+                      className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_currentColor]"
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
+                <div>
+                  <span className={`font-medium text-sm block ${isActive ? "text-primary" : "text-foreground"}`}>
+                    {d.label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {d.desc}
+                  </span>
+                </div>
+                {isDisabled && (
+                  <span className="text-[9px] text-amber-500 mt-auto">
+                    Unavailable
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {deviceError && (
+          <p className="text-sm text-destructive flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {deviceError}
+          </p>
+        )}
+
+        {/* cuDNN Download Section */}
+        {showDownloadButton && (
+          <div className="glass-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-sm font-medium text-foreground">GPU Acceleration Required</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Download NVIDIA CUDA libraries (cuDNN + cuBLAS) to enable GPU acceleration.
+            </p>
+            <button
+              onClick={handleDownloadCudnn}
+              disabled={downloading}
+              className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-medium disabled:opacity-50"
+            >
+              {downloading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {downloadProgress ? (
+                    <span>Downloading... {downloadProgress.percent}%</span>
+                  ) : (
+                    <span>Starting...</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download CUDA Libraries (~880MB)
+                </>
+              )}
+            </button>
+            {downloading && downloadProgress && (
+              <div className="space-y-1">
+                <div className="h-1.5 w-full bg-secondary/50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300 ease-out"
+                    style={{ width: `${downloadProgress.percent}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center">
+                  {formatBytes(downloadProgress.downloadedBytes)} / {formatBytes(downloadProgress.totalBytes)}
+                </p>
+              </div>
+            )}
+            {downloadError && (
+              <p className="text-xs text-destructive text-center">{downloadError}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Right side - Details panel */}
+      <div className="w-72 flex-shrink-0 animate-in slide-in-from-right-4 duration-300">
+        <div className="glass-card p-4 space-y-4 h-[400px] overflow-y-auto">
+          {/* Device Info Header */}
+          {selectedDevice && (
+            <>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-lg text-foreground">{selectedDevice.label}</h3>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
+                    {selectedDevice.detail}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{selectedDevice.desc}</p>
+              </div>
+
+              {/* Best for */}
+              <div className="space-y-1.5 py-3 border-y border-border/30">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Target className="w-3.5 h-3.5" />
+                  Best for
+                </div>
+                <p className="text-xs text-foreground/80 leading-relaxed">
+                  {selectedDevice.bestFor}
+                </p>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  About
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {selectedDevice.description}
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Hardware Status Section */}
+          <div className="space-y-3 pt-3 border-t border-border/30">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Hardware Status</span>
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                  gpuInfo?.cudaAvailable
+                    ? "bg-green-500/10 text-green-500"
+                    : gpuInfo?.gpuName && !gpuInfo?.cudnnAvailable
+                      ? "bg-amber-500/10 text-amber-500"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {gpuInfo?.cudaAvailable
+                  ? "Ready"
+                  : gpuInfo?.gpuName && !gpuInfo?.cudnnAvailable
+                    ? "Setup Needed"
+                    : "CPU Mode"}
+              </span>
+            </div>
+
+            {/* GPU Details */}
+            {gpuInfo?.gpuName ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/30">
+                  <HardDrive className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] text-muted-foreground">GPU</p>
+                    <p className="text-xs font-medium text-foreground truncate" title={gpuInfo.gpuName}>
+                      {gpuInfo.gpuName}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2.5 rounded-lg bg-secondary/30">
+                    <p className="text-[10px] text-muted-foreground">CUDA</p>
+                    <p className={`text-xs font-medium ${gpuInfo.cudaAvailable ? "text-green-500" : "text-muted-foreground"}`}>
+                      {gpuInfo.cudaAvailable ? "Available" : "Unavailable"}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-secondary/30">
+                    <p className="text-[10px] text-muted-foreground">cuDNN</p>
+                    <p className={`text-xs font-medium ${gpuInfo.cudnnAvailable ? "text-green-500" : "text-amber-500"}`}>
+                      {gpuInfo.cudnnAvailable ? "Installed" : "Missing"}
+                    </p>
+                  </div>
+                </div>
+
+                {gpuInfo.supportedComputeTypes && gpuInfo.supportedComputeTypes.length > 0 && (
+                  <div className="p-2.5 rounded-lg bg-secondary/30">
+                    <p className="text-[10px] text-muted-foreground mb-1">Compute Types</p>
+                    <div className="flex flex-wrap gap-1">
+                      {gpuInfo.supportedComputeTypes.map((ct) => (
+                        <span key={ct} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          {ct}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/30">
+                <Cpu className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground">Device</p>
+                  <p className="text-xs font-medium text-foreground">CPU Only</p>
+                </div>
+              </div>
+            )}
+
+            {/* Status message */}
+            <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+              {gpuInfo?.cudaAvailable
+                ? "Your system is fully configured for GPU acceleration."
+                : gpuInfo?.gpuName && !gpuInfo?.cudnnAvailable
+                  ? "Download CUDA libraries from the left panel to enable GPU acceleration."
+                  : "No compatible NVIDIA GPU detected. CPU transcription works well but is slower."}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Rating bar component for speed/accuracy
 const RatingBar = ({ value, max = 5, label }: { value: number; max?: number; label: string }) => (
   <div className="flex items-center gap-2">
@@ -220,15 +619,24 @@ const StepModel = ({
   model,
   setModel,
   options,
+  device,
+  gpuInfo,
 }: {
   language: string;
   setLanguage: (l: string) => void;
   model: string;
   setModel: (m: string) => void;
   options: Options;
+  device: string;
+  gpuInfo: GpuInfo | null;
 }) => {
   const selectedModel = MODEL_OPTIONS.find((m) => m.id === model);
   const categoryInfo = selectedModel ? MODEL_CATEGORIES[selectedModel.category] : null;
+
+  // Compute the resolved device label for display
+  const resolvedDevice = device === "auto"
+    ? (gpuInfo?.cudaAvailable ? "CUDA" : "CPU")
+    : device.toUpperCase();
 
   // Auto-switch language when selecting English-only model
   const handleModelSelect = (modelId: string) => {
@@ -271,10 +679,19 @@ const StepModel = ({
               <Cpu className="w-4 h-4" />
               Processing Model
             </span>
-            <span className="badge-glow !py-1 !px-2.5 !text-[10px]">
-              <Shield className="w-3 h-3" />
-              Local Only
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                resolvedDevice === "CUDA"
+                  ? "bg-green-500/10 text-green-500"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {resolvedDevice}
+              </span>
+              <span className="badge-glow !py-1 !px-2.5 !text-[10px]">
+                <Shield className="w-3 h-3" />
+                Local Only
+              </span>
+            </div>
           </div>
 
           <div
@@ -527,6 +944,12 @@ const STEPS_CONFIG = [
     icon: Mic,
   },
   {
+    id: "hardware",
+    title: "Hardware Setup",
+    subtitle: "Configure GPU acceleration for faster transcription.",
+    icon: HardDrive,
+  },
+  {
     id: "model",
     title: "Choose Model",
     subtitle: "Select the AI model and language for transcription.",
@@ -567,13 +990,19 @@ export function Onboarding() {
   const [retention] = useState(-1);
   const [theme, setTheme] = useState<Settings["theme"]>("system");
   const [microphone, setMicrophone] = useState<number>(0);
+  const [device, setDevice] = useState("auto");
+  const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
         setError(null);
-        const optionsData = await api.getOptions();
+        const [optionsData, gpuData] = await Promise.all([
+          api.getOptions(),
+          api.getGpuInfo(),
+        ]);
         setOptions(optionsData);
+        setGpuInfo(gpuData);
         if (optionsData.microphones.length > 0) {
           setMicrophone(optionsData.microphones[0].id);
         }
@@ -588,6 +1017,16 @@ export function Onboarding() {
     };
     load();
   }, []);
+
+  // Refresh GPU info (called after cuDNN download)
+  const refreshGpuInfo = async () => {
+    try {
+      const gpuData = await api.getGpuInfo();
+      setGpuInfo(gpuData);
+    } catch (err) {
+      console.error("Failed to refresh GPU info:", err);
+    }
+  };
 
   // Apply theme in real-time
   useEffect(() => {
@@ -615,6 +1054,7 @@ export function Onboarding() {
         retention,
         theme,
         microphone,
+        device,
         onboardingComplete: true,
       });
       navigate("/dashboard");
@@ -727,15 +1167,27 @@ export function Onboarding() {
         );
       case 2:
         return (
+          <StepHardware
+            device={device}
+            setDevice={setDevice}
+            gpuInfo={gpuInfo}
+            options={options}
+            onGpuInfoUpdate={refreshGpuInfo}
+          />
+        );
+      case 3:
+        return (
           <StepModel
             language={language}
             setLanguage={setLanguage}
             model={model}
             setModel={setModel}
             options={options}
+            device={device}
+            gpuInfo={gpuInfo}
           />
         );
-      case 3:
+      case 4:
         return (
           <ModelDownloadProgress
             modelName={model}
@@ -745,7 +1197,7 @@ export function Onboarding() {
             autoStart={true}
           />
         );
-      case 4:
+      case 5:
         return (
           <StepTheme
             theme={theme}
@@ -754,7 +1206,7 @@ export function Onboarding() {
             setAutoStart={setAutoStart}
           />
         );
-      case 5:
+      case 6:
         return <StepFinal />;
       default:
         return null;

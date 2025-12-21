@@ -1,5 +1,5 @@
 import { rpc } from "pyloid-js";
-import type { Settings, HistoryEntry, Options, Stats, ModelInfo, HotkeyValidation } from "./types";
+import type { Settings, HistoryEntry, Options, Stats, ModelInfo, HotkeyValidation, GpuInfo, DeviceValidation, CudnnDownloadInfo, CudnnDownloadResult, CudnnDownloadProgress } from "./types";
 
 export const api = {
   async getSettings(): Promise<Settings> {
@@ -102,5 +102,31 @@ export const api = {
     excludeCurrent?: "holdHotkey" | "toggleHotkey"
   ): Promise<HotkeyValidation> {
     return rpc.call("validate_hotkey", { hotkey, excludeCurrent });
+  },
+
+  // GPU/Device info
+  async getGpuInfo(): Promise<GpuInfo> {
+    return rpc.call("get_gpu_info");
+  },
+
+  async validateDevice(device: string): Promise<DeviceValidation> {
+    return rpc.call("validate_device", { device });
+  },
+
+  // cuDNN download
+  async getCudnnDownloadInfo(): Promise<CudnnDownloadInfo> {
+    return rpc.call("get_cudnn_download_info");
+  },
+
+  async downloadCudnn(): Promise<CudnnDownloadResult> {
+    return rpc.call("download_cudnn");
+  },
+
+  async getCudnnDownloadProgress(): Promise<CudnnDownloadProgress> {
+    return rpc.call("get_cudnn_download_progress");
+  },
+
+  async clearCudaLibs(): Promise<{ success: boolean }> {
+    return rpc.call("clear_cuda_libs");
   },
 };

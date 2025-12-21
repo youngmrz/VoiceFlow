@@ -32,11 +32,15 @@ RETENTION_OPTIONS = {
 # Theme options
 THEME_OPTIONS = ["system", "light", "dark"]
 
+# Device options for transcription
+DEVICE_OPTIONS = ["auto", "cpu", "cuda"]
+
 
 @dataclass
 class Settings:
     language: str = "auto"
     model: str = "tiny"
+    device: str = "auto"  # "auto", "cpu", or "cuda"
     auto_start: bool = True
     retention: int = -1  # days, -1 = forever
     theme: str = "system"
@@ -62,6 +66,7 @@ class SettingsService:
         settings = Settings(
             language=self.db.get_setting("language", "auto"),
             model=self.db.get_setting("model", "tiny"),
+            device=self.db.get_setting("device", "auto"),
             auto_start=self.db.get_setting("auto_start", "true") == "true",
             retention=int(self.db.get_setting("retention", "-1")),
             theme=self.db.get_setting("theme", "system"),
@@ -82,6 +87,7 @@ class SettingsService:
         *,
         language: Optional[str] = None,
         model: Optional[str] = None,
+        device: Optional[str] = None,
         auto_start: Optional[bool] = None,
         retention: Optional[int] = None,
         theme: Optional[str] = None,
@@ -97,6 +103,8 @@ class SettingsService:
             self.db.set_setting("language", language)
         if model is not None:
             self.db.set_setting("model", model)
+        if device is not None:
+            self.db.set_setting("device", device)
         if auto_start is not None:
             self.db.set_setting("auto_start", "true" if auto_start else "false")
         if retention is not None:
@@ -133,3 +141,6 @@ class SettingsService:
 
     def get_theme_options(self) -> list:
         return THEME_OPTIONS
+
+    def get_device_options(self) -> list:
+        return DEVICE_OPTIONS

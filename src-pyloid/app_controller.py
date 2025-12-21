@@ -15,6 +15,8 @@ from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
 from services.logger import info, error, debug, warning, exception
+from services.gpu import is_cuda_available, get_gpu_name, get_cuda_compute_types, validate_device_setting, get_cudnn_status, reset_cuda_cache, has_nvidia_gpu
+from services.cudnn_downloader import download_cudnn, is_cuda_libs_installed, get_download_size_mb, get_download_progress, clear_cuda_dir
 
 
 class AudioAttachmentMeta(TypedDict):
@@ -83,8 +85,8 @@ class AppController:
         def load_model():
             self._model_loading = True
             try:
-                info(f"Loading model: {settings.model}...")
-                self.transcription_service.load_model(settings.model)
+                info(f"Loading model: {settings.model} on device: {settings.device}...")
+                self.transcription_service.load_model(settings.model, settings.device)
                 self._model_loaded = True
                 info("Model loaded successfully!")
             except Exception as e:
@@ -221,6 +223,7 @@ class AppController:
         return {
             "language": settings.language,
             "model": settings.model,
+            "device": settings.device,
             "autoStart": settings.auto_start,
             "retention": settings.retention,
             "theme": settings.theme,
@@ -253,17 +256,17 @@ class AppController:
         if "toggleHotkeyEnabled" in kwargs:
             mapped["toggle_hotkey_enabled"] = kwargs["toggleHotkeyEnabled"]
 
-        for key in ["language", "model", "retention", "theme", "microphone"]:
+        for key in ["language", "model", "device", "retention", "theme", "microphone"]:
             if key in kwargs:
                 mapped[key] = kwargs[key]
 
         debug(f"Mapped settings: {mapped}")
         settings = self.settings_service.update_settings(**mapped)
 
-        # Reload model if changed
-        if "model" in mapped:
+        # Reload model if model or device changed
+        if "model" in mapped or "device" in mapped:
             def reload():
-                self.transcription_service.load_model(mapped["model"])
+                self.transcription_service.load_model(settings.model, settings.device)
             threading.Thread(target=reload, daemon=True).start()
 
         # Update microphone if changed
@@ -302,7 +305,69 @@ class AppController:
             "retentionOptions": self.settings_service.get_retention_options(),
             "themeOptions": self.settings_service.get_theme_options(),
             "microphones": self.audio_service.get_input_devices(),
+            "deviceOptions": self.settings_service.get_device_options(),
         }
+
+    def get_gpu_info(self) -> dict:
+        """Get GPU/CUDA information for the frontend."""
+        cuda_available = is_cuda_available()
+        cudnn_available, cudnn_message = get_cudnn_status()
+        # Always try to get GPU name (to show "GPU detected but cuDNN missing")
+        gpu_name = get_gpu_name()
+        return {
+            "cudaAvailable": cuda_available,
+            "deviceCount": 1 if cuda_available else 0,
+            "gpuName": gpu_name,
+            "supportedComputeTypes": get_cuda_compute_types() if cuda_available else [],
+            "currentDevice": self.transcription_service.get_current_device(),
+            "currentComputeType": self.transcription_service.get_current_compute_type(),
+            "cudnnAvailable": cudnn_available,
+            "cudnnMessage": cudnn_message,
+        }
+
+    def validate_device(self, device: str) -> dict:
+        """Validate a device setting before saving."""
+        is_valid, error_msg = validate_device_setting(device)
+        return {
+            "valid": is_valid,
+            "error": error_msg
+        }
+
+    def get_cudnn_download_info(self) -> dict:
+        """Get info about cuDNN download status and requirements."""
+        return {
+            "hasNvidiaGpu": has_nvidia_gpu(),
+            "cudnnInstalled": is_cuda_libs_installed(),
+            "downloadSizeMb": get_download_size_mb(),
+        }
+
+    def download_cudnn(self, progress_callback=None) -> dict:
+        """Download and install cuDNN and cuBLAS libraries."""
+        info("Starting CUDA libraries download")
+        success, error_msg = download_cudnn(progress_callback=progress_callback)
+        if success:
+            # Reset cache so next check picks up the new DLLs
+            reset_cuda_cache()
+            info("CUDA libraries download complete")
+        else:
+            error("CUDA libraries download failed", error=error_msg)
+        return {
+            "success": success,
+            "error": error_msg,
+        }
+
+    def get_cudnn_download_progress(self) -> dict:
+        """Get current CUDA libraries download progress."""
+        return get_download_progress()
+
+    def clear_cuda_libs(self) -> dict:
+        """Clear downloaded CUDA libraries (cuDNN + cuBLAS)."""
+        info("Clearing CUDA libraries")
+        success = clear_cuda_dir()
+        if success:
+            reset_cuda_cache()
+            info("CUDA libraries cleared")
+        return {"success": success}
 
     def stop_recording(self):
         """Manually stop recording (called from stop button)."""

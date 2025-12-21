@@ -26,7 +26,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Settings, Options } from "@/lib/types";
+import type { Settings, Options, GpuInfo } from "@/lib/types";
 import { ModelDownloadModal } from "./ModelDownloadModal";
 import { HotkeyCapture } from "./HotkeyCapture";
 import {
@@ -52,16 +52,22 @@ export function SettingsTab() {
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [pendingModel, setPendingModel] = useState<string | null>(null);
 
+  // GPU info state
+  const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+
   const loadSettings = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [settingsData, optionsData] = await Promise.all([
+      const [settingsData, optionsData, gpuData] = await Promise.all([
         api.getSettings(),
         api.getOptions(),
+        api.getGpuInfo(),
       ]);
       setSettings(settingsData);
       setOptions(optionsData);
+      setGpuInfo(gpuData);
     } catch (error) {
       console.error("Failed to load settings:", error);
       setError("Failed to load settings. Please try again.");
@@ -149,6 +155,40 @@ export function SettingsTab() {
       }
     },
     []
+  );
+
+  // Handle device change with validation
+  const handleDeviceChange = useCallback(
+    async (newDevice: string) => {
+      if (!settings) return;
+
+      setDeviceError(null);
+
+      // Validate the device selection
+      const validation = await api.validateDevice(newDevice);
+      if (!validation.valid) {
+        setDeviceError(validation.error);
+        toast.error(validation.error || "Invalid device selection");
+        return;
+      }
+
+      // Update the setting
+      const newSettings = { ...settings, device: newDevice };
+      setSettings(newSettings);
+
+      try {
+        await api.updateSettings({ device: newDevice });
+        // Refresh GPU info after device change
+        const gpuData = await api.getGpuInfo();
+        setGpuInfo(gpuData);
+        toast.success("Device updated - model will reload");
+      } catch (err) {
+        console.error("Failed to update device:", err);
+        toast.error("Failed to update device");
+        setSettings(settings); // Revert
+      }
+    },
+    [settings]
   );
 
   useEffect(() => {
@@ -490,7 +530,91 @@ export function SettingsTab() {
             </div>
           </BentoSettingCard>
 
-          {/* 9. Danger Zone (Span 4) */}
+          {/* Advanced Section Divider */}
+          <div className="md:col-span-6 lg:col-span-12 pt-4">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground mb-1">
+              Advanced
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Hardware and performance settings
+            </p>
+          </div>
+
+          {/* 9. GPU / Device (Span 6) */}
+          <BentoSettingCard
+            title="Compute Device"
+            description="Choose CPU or GPU for transcription"
+            icon={Cpu}
+            className="md:col-span-6 lg:col-span-6"
+          >
+            <Select
+              value={settings.device}
+              onValueChange={handleDeviceChange}
+            >
+              <SelectTrigger className="h-12 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.deviceOptions.map((device) => (
+                  <SelectItem
+                    key={device}
+                    value={device}
+                    disabled={device === "cuda" && !gpuInfo?.cudaAvailable}
+                  >
+                    {device === "auto"
+                      ? "Auto (Recommended)"
+                      : device === "cuda"
+                        ? `CUDA${!gpuInfo?.cudaAvailable ? " (Unavailable)" : ""}`
+                        : "CPU"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {deviceError && (
+              <p className="text-xs text-destructive mt-2">{deviceError}</p>
+            )}
+            {gpuInfo && (
+              <div className="mt-4 p-3 rounded-xl bg-secondary/30 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className={
+                    gpuInfo.cudaAvailable
+                      ? "text-green-500"
+                      : gpuInfo.gpuName && !gpuInfo.cudnnAvailable
+                        ? "text-amber-500"
+                        : "text-muted-foreground"
+                  }>
+                    {gpuInfo.cudaAvailable
+                      ? "CUDA Available"
+                      : gpuInfo.gpuName && !gpuInfo.cudnnAvailable
+                        ? "cuDNN Missing"
+                        : "CPU Only"}
+                  </span>
+                </div>
+                {gpuInfo.gpuName && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">GPU</span>
+                    <span className="text-foreground truncate ml-2 max-w-[180px]" title={gpuInfo.gpuName}>
+                      {gpuInfo.gpuName}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Active</span>
+                  <span className="text-foreground">
+                    {gpuInfo.currentDevice.toUpperCase()} ({gpuInfo.currentComputeType})
+                  </span>
+                </div>
+                {gpuInfo.gpuName && !gpuInfo.cudnnAvailable && (
+                  <p className="text-xs text-amber-500 pt-1">
+                    Install cuDNN 9.x for GPU acceleration
+                  </p>
+                )}
+              </div>
+            )}
+          </BentoSettingCard>
+
+          {/* 10. Danger Zone (Span 4) */}
           <DangerZoneCard />
         </div>
       </div>
@@ -556,6 +680,7 @@ function BentoSettingCard({
 function DangerZoneCard() {
   const [deleteAppData, setDeleteAppData] = useState(true);
   const [deleteModels, setDeleteModels] = useState(false);
+  const [deleteCudaLibs, setDeleteCudaLibs] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -571,11 +696,16 @@ function DangerZoneCard() {
         await api.clearModelCache();
       }
 
-      const message = deleteAppData && deleteModels
-        ? "All data and models deleted"
-        : deleteAppData
-          ? "App data deleted"
-          : "Models deleted";
+      // Delete CUDA libraries (cuDNN + cuBLAS)
+      if (deleteCudaLibs) {
+        await api.clearCudaLibs();
+      }
+
+      const parts = [];
+      if (deleteAppData) parts.push("app data");
+      if (deleteModels) parts.push("models");
+      if (deleteCudaLibs) parts.push("CUDA libraries");
+      const message = parts.length > 0 ? `Deleted: ${parts.join(", ")}` : "Nothing deleted";
 
       toast.success(`${message} - returning to setup`);
       setTimeout(() => {
@@ -590,7 +720,7 @@ function DangerZoneCard() {
     }
   };
 
-  const canDelete = deleteAppData || deleteModels;
+  const canDelete = deleteAppData || deleteModels || deleteCudaLibs;
 
   return (
     <BentoSettingCard
@@ -655,6 +785,27 @@ function DangerZoneCard() {
                   </p>
                   <code className="text-[10px] text-muted-foreground/70 mt-1 block">
                     %USERPROFILE%\.cache\huggingface\hub\
+                  </code>
+                </div>
+              </label>
+
+              {/* CUDA Libraries Option */}
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
+                <Checkbox
+                  checked={deleteCudaLibs}
+                  onCheckedChange={(checked) => setDeleteCudaLibs(checked === true)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">CUDA Libraries</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    cuDNN + cuBLAS for GPU acceleration (requires re-download)
+                  </p>
+                  <code className="text-[10px] text-muted-foreground/70 mt-1 block">
+                    %USERPROFILE%\.VoiceFlow\cuda\
                   </code>
                 </div>
               </label>
