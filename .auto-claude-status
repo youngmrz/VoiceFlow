@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "spec": "017-smart-model-loading-memory-optimization",
+  "state": "planning",
+  "subtasks": {
+    "completed": 0,
+    "total": 0,
+    "in_progress": 1,
+    "failed": 0
+  },
+  "phase": {
+    "current": "Idle Timer Service",
+    "id": null,
+    "total": 2
+  },
+  "workers": {
+    "active": 0,
+    "max": 1
+  },
+  "session": {
+    "number": 2,
+    "started_at": "2026-01-14T11:26:54.440410"
+  },
+  "last_update": "2026-01-14T11:31:52.295027"
+}

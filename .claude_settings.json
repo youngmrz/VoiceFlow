@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization/**)",
+      "Write(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization/**)",
+      "Edit(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization/**)",
+      "Glob(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization/**)",
+      "Grep(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization/**)",
+      "Read(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization\\.auto-claude\\specs\\017-smart-model-loading-memory-optimization/**)",
+      "Write(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization\\.auto-claude\\specs\\017-smart-model-loading-memory-optimization/**)",
+      "Edit(D:\\dev\\personal\\VoiceFlow\\.auto-claude\\worktrees\\tasks\\017-smart-model-loading-memory-optimization\\.auto-claude\\specs\\017-smart-model-loading-memory-optimization/**)",
+      "Read(D:\\dev\\personal\\VoiceFlow\\.auto-claude/**)",
+      "Write(D:\\dev\\personal\\VoiceFlow\\.auto-claude/**)",
+      "Edit(D:\\dev\\personal\\VoiceFlow\\.auto-claude/**)",
+      "Glob(D:\\dev\\personal\\VoiceFlow\\.auto-claude/**)",
+      "Grep(D:\\dev\\personal\\VoiceFlow\\.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}
