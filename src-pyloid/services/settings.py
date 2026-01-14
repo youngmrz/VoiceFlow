@@ -53,6 +53,9 @@ class Settings:
     hold_hotkey_enabled: bool = True
     toggle_hotkey: str = "ctrl+shift+win"
     toggle_hotkey_enabled: bool = False
+    # Model unload settings
+    model_unload_enabled: bool = True
+    model_unload_timeout: int = 300  # seconds
 
 
 class SettingsService:
@@ -79,6 +82,9 @@ class SettingsService:
             hold_hotkey_enabled=self.db.get_setting("hold_hotkey_enabled", "true") == "true",
             toggle_hotkey=self.db.get_setting("toggle_hotkey", "ctrl+shift+win"),
             toggle_hotkey_enabled=self.db.get_setting("toggle_hotkey_enabled", "false") == "true",
+            # Model unload settings
+            model_unload_enabled=self.db.get_setting("model_unload_enabled", "true") == "true",
+            model_unload_timeout=int(self.db.get_setting("model_unload_timeout", "300")),
         )
         self._cache = settings
         return settings
@@ -99,6 +105,8 @@ class SettingsService:
         hold_hotkey_enabled: Optional[bool] = None,
         toggle_hotkey: Optional[str] = None,
         toggle_hotkey_enabled: Optional[bool] = None,
+        model_unload_enabled: Optional[bool] = None,
+        model_unload_timeout: Optional[int] = None,
     ) -> Settings:
         if language is not None:
             self.db.set_setting("language", language)
@@ -127,6 +135,11 @@ class SettingsService:
             self.db.set_setting("toggle_hotkey", normalize_hotkey(toggle_hotkey))
         if toggle_hotkey_enabled is not None:
             self.db.set_setting("toggle_hotkey_enabled", "true" if toggle_hotkey_enabled else "false")
+        # Model unload settings
+        if model_unload_enabled is not None:
+            self.db.set_setting("model_unload_enabled", "true" if model_unload_enabled else "false")
+        if model_unload_timeout is not None:
+            self.db.set_setting("model_unload_timeout", str(model_unload_timeout))
 
         self._cache = None  # Invalidate cache
         return self.get_settings()
