@@ -240,12 +240,6 @@ class AppController:
         debug(f"Mapped settings: {mapped}")
         settings = self.settings_service.update_settings(**mapped)
 
-        # Reload model if model or device changed
-        if "model" in mapped or "device" in mapped:
-            def reload():
-                self.transcription_service.load_model(settings.model, settings.device)
-            threading.Thread(target=reload, daemon=True).start()
-
         # Update microphone if changed
         if "microphone" in mapped:
             mic_id = mapped["microphone"] if mapped["microphone"] >= 0 else None
