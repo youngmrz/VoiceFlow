@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { base64ToBlobUrl, revokeUrl, isInvalidAudioPayload } from "@/lib/audio";
 import {
   Dialog,
@@ -207,13 +208,29 @@ export function HistoryPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {entries.map((entry) => {
                       const hasAudio = !!entry.has_audio;
+                      const isSelected = selectedIds.has(entry.id);
                       return (
                         <Card
                           key={entry.id}
-                          className="group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm border-border/50 hover:bg-card hover:border-primary/20 transition-colors duration-150"
+                          className={`group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm transition-all duration-150 ${
+                            isSelected
+                              ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
+                              : "border-border/50 hover:bg-card hover:border-primary/20"
+                          }`}
                         >
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="flex items-center gap-2">
+                              <div
+                                className={`transition-opacity ${
+                                  isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleSelect(entry.id)}
+                                />
+                              </div>
                               <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
                                 <Clock className="w-3 h-3" />
                                 {formatTime(entry.created_at)}
