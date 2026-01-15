@@ -74,29 +74,12 @@ class AppController:
         self._on_error = on_error
 
     def initialize(self):
-        """Initialize the app - load model and start hotkey listener."""
+        """Initialize the app - start hotkey listener (model loads lazily on first use)."""
         settings = self.settings_service.get_settings()
 
         # Set initial microphone
         mic_id = settings.microphone if settings.microphone >= 0 else None
         self.audio_service.set_device(mic_id)
-
-        # Load whisper model in background
-        def load_model():
-            self._model_loading = True
-            try:
-                info(f"Loading model: {settings.model} on device: {settings.device}...")
-                self.transcription_service.load_model(settings.model, settings.device)
-                self._model_loaded = True
-                info("Model loaded successfully!")
-            except Exception as e:
-                exception(f"Failed to load model: {e}")
-                if self._on_error:
-                    self._on_error(f"Failed to load model: {e}")
-            finally:
-                self._model_loading = False
-
-        threading.Thread(target=load_model, daemon=True).start()
 
         # Configure hotkey service with settings
         self.hotkey_service.configure(

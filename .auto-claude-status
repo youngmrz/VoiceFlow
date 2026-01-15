@@ -3,13 +3,13 @@
   "spec": "001-minimal-idle-resource-usage",
   "state": "building",
   "subtasks": {
-    "completed": 4,
+    "completed": 6,
     "total": 15,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Add New - Lazy Loading System",
+    "current": "Migrate - Switch to Lazy Loading",
     "id": null,
     "total": 3
   },
@@ -19,7 +19,7 @@
   },
   "session": {
     "number": 6,
-    "started_at": "2026-01-14T22:45:59.101594"
+    "started_at": "2026-01-14T22:56:18.466900"
   },
-  "last_update": "2026-01-14T23:04:46.014531"
+  "last_update": "2026-01-14T23:08:33.147228"
 }
