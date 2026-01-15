@@ -98,17 +98,11 @@ export function HistoryTab() {
 
   const handleBulkDelete = async () => {
     try {
-      // Delete all selected entries
-      await Promise.all(
-        Array.from(selectedIds).map((id) => api.deleteHistory(id))
-      );
-      // Remove from local state
+      const idsToDelete = Array.from(selectedIds);
+      await api.bulkDeleteHistory(idsToDelete);
       setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
-      // Clear selection
       setSelectedIds(new Set());
-      // Close dialog
       setShowDeleteDialog(false);
-      // Show success message
       toast.success(`${selectedIds.size} transcription${selectedIds.size > 1 ? "s" : ""} deleted`);
     } catch (error) {
       toast.error("Failed to delete transcriptions");
