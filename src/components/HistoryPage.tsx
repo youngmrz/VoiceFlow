@@ -14,6 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -26,6 +36,7 @@ export function HistoryPage() {
   const [audioMeta, setAudioMeta] = useState<{ fileName?: string; mime?: string; durationMs?: number } | null>(null);
   const [loadingAudioFor, setLoadingAudioFor] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Reusing the same load logic as HomePage for consistency
   const loadHistory = async (searchQuery?: string) => {
@@ -128,6 +139,19 @@ export function HistoryPage() {
     setSelectedIds(new Set());
   };
 
+  const handleBulkDelete = async () => {
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      await Promise.all(idsToDelete.map((id) => api.deleteHistory(id)));
+      setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
+      setSelectedIds(new Set());
+      setShowDeleteConfirm(false);
+      toast.success(`Deleted ${idsToDelete.length} transcription${idsToDelete.length > 1 ? 's' : ''}`);
+    } catch (error) {
+      toast.error("Failed to delete selected transcriptions");
+    }
+  };
+
   const groupedHistory = groupByDate(history);
   const durationMs = audioMeta?.durationMs;
 
@@ -212,9 +236,19 @@ export function HistoryPage() {
                   Clear Selection
                 </Button>
                 {selectedIds.size > 0 && (
-                  <span className="text-sm text-muted-foreground ml-2">
-                    {selectedIds.size} selected
-                  </span>
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete ({selectedIds.size})
+                    </Button>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      {selectedIds.size} selected
+                    </span>
+                  </>
                 )}
               </div>
 
@@ -352,6 +386,23 @@ export function HistoryPage() {
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {selectedIds.size} transcription{selectedIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the selected transcriptions from your history.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-white hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
