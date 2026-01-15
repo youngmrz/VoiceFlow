@@ -135,8 +135,10 @@ class TestBulkDeleteHistory:
         # Verify no entries were deleted
         entries_after = db.get_history()
         assert len(entries_after) == 2
-        assert entries_after[0]["id"] == id1
-        assert entries_after[1]["id"] == id2
+        # Check that both IDs still exist (order doesn't matter)
+        entry_ids = {entry["id"] for entry in entries_after}
+        assert id1 in entry_ids
+        assert id2 in entry_ids
 
     def test_bulk_delete_history_missing_audio_file(self, db):
         """Bulk delete continues even if audio file doesn't exist."""
