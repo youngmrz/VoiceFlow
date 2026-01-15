@@ -3,7 +3,7 @@
   "spec": "001-minimal-idle-resource-usage",
   "state": "building",
   "subtasks": {
-    "completed": 13,
+    "completed": 14,
     "total": 15,
     "in_progress": 1,
     "failed": 0
@@ -18,8 +18,8 @@
     "max": 1
   },
   "session": {
-    "number": 14,
+    "number": 15,
     "started_at": "2026-01-14T22:45:59.101594"
   },
-  "last_update": "2026-01-14T23:30:27.261775"
+  "last_update": "2026-01-14T23:35:21.619012"
 }

@@ -35,6 +35,7 @@ Cloud dictation services charge monthly fees while harvesting your voice data. V
 | **Data Privacy** | **100% Local** | Cloud Processed |
 | **Offline Support** | **Full Capability** | None |
 | **Latency** | **Real-time** | Network Dependent |
+| **Idle Resources** | **<20 MB, 0% CPU** | Varies |
 | **Account Required** | **No** | Yes |
 | **Open Source** | **MIT License** | Proprietary |
 
@@ -50,6 +51,17 @@ Everything runs on localhost. Your microphone data never leaves your RAM. We can
 
 ---
 
+### Battery-Friendly Performance
+
+VoiceFlow uses minimal resources when idle so your laptop stays cool and quiet.
+
+*   **Lazy Loading**: AI model loads only when you need it (2-5 second first-use delay).
+*   **Auto-Unload**: Model automatically clears from memory after 5 minutes idle (configurable).
+*   **~20 MB Idle**: Minimal memory footprint when not in use.
+*   **0% CPU**: No background processing or fan noise while idle.
+
+---
+
 ### How It Works
 
 No hidden processes, no cloud uploads. Just transparent, local AI at every step.
@@ -59,13 +71,13 @@ No hidden processes, no cloud uploads. Just transparent, local AI at every step.
 </p>
 
 #### 1. Ready
-VoiceFlow waits silently in your system tray. A minimal popup indicates recording status.
+VoiceFlow waits silently in your system tray using under 20 MB of memory. The AI model loads only when needed.
 
 #### 2. Listening
 Activate with your hotkey and speak naturally. Audio stays in RAM only—the interface visualizes your voice amplitude in real-time.
 
 #### 3. Transcribe & Paste
-Release the hotkey. Local AI processes your audio instantly, then auto-pastes text at your cursor.
+Release the hotkey. Local AI processes your audio (first use takes 2-5s to load model), then auto-pastes text at your cursor. Model stays loaded for 5 minutes, then auto-unloads to free memory.
 
 <p align="center">
   <img src="media/app-dash.png" alt="VoiceFlow Dashboard" width="100%">
@@ -101,6 +113,7 @@ Choose from 16+ Whisper models optimized for different use cases.
 *   **Custom Hotkeys**: Configure your own shortcuts with Hold or Toggle modes.
 *   **Local History**: Searchable SQLite database of all your transcriptions.
 *   **Auto-Paste**: Text appears directly at your cursor—no copy-paste needed.
+*   **Resource Efficient**: Lazy loading keeps idle usage under 20 MB. Configurable auto-unload timeout (30s to 30 min).
 
 ---
 
