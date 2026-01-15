@@ -22,6 +22,7 @@ class TranscriptionService:
         self._current_compute_type: str = None
         self._loading = False
         self._lock = threading.Lock()
+        self._idle_timer: Optional[threading.Timer] = None
 
     def load_model(self, model_name: str = "tiny", device_preference: str = "auto"):
         """Load or switch Whisper model.
@@ -30,6 +31,9 @@ class TranscriptionService:
             model_name: Name of the Whisper model
             device_preference: "auto", "cpu", or "cuda"
         """
+        # Cancel idle timer since we're actively using the model
+        self._cancel_idle_timer()
+
         # Resolve device and compute type
         device = resolve_device(device_preference)
         compute_type = get_compute_type(device)
@@ -153,8 +157,33 @@ class TranscriptionService:
 
     def unload_model(self):
         """Unload model to free memory."""
+        self._cancel_idle_timer()
         with self._lock:
             self._model = None
             self._current_model_name = None
             self._current_device = None
             self._current_compute_type = None
+
+    def start_idle_timer(self, timeout_seconds: int):
+        """Start idle timer that will auto-unload model after timeout.
+
+        Args:
+            timeout_seconds: Number of seconds of inactivity before unloading model
+        """
+        self._cancel_idle_timer()
+        if timeout_seconds > 0:
+            self._idle_timer = threading.Timer(timeout_seconds, self._on_idle_timeout)
+            self._idle_timer.daemon = True
+            self._idle_timer.start()
+            log.debug("Idle timer started", timeout=timeout_seconds)
+
+    def _cancel_idle_timer(self):
+        """Cancel any running idle timer."""
+        if self._idle_timer is not None:
+            self._idle_timer.cancel()
+            self._idle_timer = None
+
+    def _on_idle_timeout(self):
+        """Called when idle timer expires."""
+        log.info("Model idle timeout reached, unloading model")
+        self.unload_model()
