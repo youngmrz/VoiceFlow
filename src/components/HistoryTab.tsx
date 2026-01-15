@@ -11,6 +11,7 @@ export function HistoryTab() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const loadHistory = async (searchQuery?: string) => {
     setLoading(true);
@@ -61,6 +62,26 @@ export function HistoryTab() {
       console.error("Failed to delete:", error);
       toast.error("Failed to delete transcription");
     }
+  };
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedIds(new Set(history.map((entry) => entry.id)));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
   };
 
   const groupedHistory = groupByDate(history);
