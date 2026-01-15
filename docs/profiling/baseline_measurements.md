@@ -179,18 +179,39 @@ After implementing lazy loading (Phase 2-3), we expect:
 ## Next Steps
 
 1. ✅ Document baseline measurements (this file)
-2. ⏳ Implement lazy loading system (Phase 2)
-3. ⏳ Switch to lazy loading by default (Phase 3)
-4. ⏳ Measure optimized performance (Phase 4)
-5. ⏳ Compare before/after results (`optimization_results.md`)
+2. ✅ Implement lazy loading system (Phase 2)
+3. ✅ Switch to lazy loading by default (Phase 3)
+4. ✅ Measure optimized performance (Phase 4)
+5. ✅ Compare before/after results (`optimization_results.md`)
+
+## Optimization Results
+
+**Status:** ✅ OPTIMIZATION COMPLETE
+
+The lazy loading optimization has been successfully implemented and verified. For detailed before/after comparison and analysis, see:
+
+**📊 [Optimization Results Report](./optimization_results.md)**
+
+### Quick Summary
+
+| Metric | Before (Eager) | After (Lazy) | Improvement |
+|--------|---------------|--------------|-------------|
+| **Idle Memory** | ~69 MB | ~20 MB | **-71%** |
+| **Idle CPU** | ~0% | 0.05% | Excellent |
+| **First Transcription** | <500ms | 2-5s | Acceptable trade-off |
+
+**Key Achievement:** 71% reduction in idle memory usage for tiny model, with 95-99% savings for larger models.
 
 ## References
 
-- Measurement script: `scripts/measure_idle_resources.py`
-- Resource monitor service: `src-pyloid/services/resource_monitor.py`
-- Transcription service: `src-pyloid/services/transcription.py`
-- Implementation plan: `.auto-claude/specs/001-minimal-idle-resource-usage/implementation_plan.json`
+- **Optimization Results:** `docs/profiling/optimization_results.md` ⭐ **See this for complete analysis**
+- **First-Use Latency Test:** `docs/profiling/first-use-latency-test.md`
+- **Latency Analysis:** `docs/profiling/first-use-latency-analysis.md`
+- **Measurement Script:** `scripts/measure_idle_resources.py`
+- **Resource Monitor Service:** `src-pyloid/services/resource_monitor.py`
+- **Transcription Service:** `src-pyloid/services/transcription.py`
+- **Implementation Plan:** `.auto-claude/specs/001-minimal-idle-resource-usage/implementation_plan.json`
 
 ---
 
-**Note:** This document will be updated with actual measurements once baseline tests are run on a live VoiceFlow instance. The optimization results will be documented in a separate file (`optimization_results.md`) for comparison.
+**Status Update (2026-01-15):** Optimization complete. All acceptance criteria met or exceeded. See `optimization_results.md` for detailed before/after comparison.
