@@ -145,27 +145,13 @@ class AppController:
         # Transcribe in background
         def transcribe():
             try:
-                # Wait for model to be loaded (with timeout)
-                wait_time = 0
-                while not self._model_loaded and wait_time < 30:
-                    if not self._model_loading:
-                        warning("Model not loaded and not loading, skipping transcription")
-                        if self._on_transcription_complete:
-                            self._on_transcription_complete("")
-                        return
-                    info(f"Waiting for model to load... ({wait_time}s)")
-                    time.sleep(1)
-                    wait_time += 1
-
-                if not self._model_loaded:
-                    error("Model load timeout, skipping transcription")
-                    if self._on_transcription_complete:
-                        self._on_transcription_complete("")
-                    return
-
                 settings = self.settings_service.get_settings()
-                info(f"Transcribing with language: {settings.language}")
 
+                # Lazy load model if needed
+                info(f"Ensuring model loaded: {settings.model} on device: {settings.device}")
+                self.transcription_service.ensure_model_loaded(settings.model, settings.device)
+
+                info(f"Transcribing with language: {settings.language}")
                 text = self.transcription_service.transcribe(
                     audio,
                     language=settings.language,
@@ -201,6 +187,10 @@ class AppController:
                     warning("No text transcribed (empty result)")
                     if self._on_transcription_complete:
                         self._on_transcription_complete("")
+
+                # Start idle timer to auto-unload model after inactivity
+                # Default timeout: 300 seconds (5 minutes)
+                self.transcription_service.start_idle_timer(timeout_seconds=300)
 
             except Exception as e:
                 exception(f"Transcription error: {e}")
