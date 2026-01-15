@@ -45,6 +45,7 @@ class AppController:
         self._on_transcription_complete: Optional[Callable[[str], None]] = None
         self._on_amplitude: Optional[Callable[[float], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
+        self._on_model_loading: Optional[Callable[[], None]] = None
 
         # Setup hotkey callbacks
         self.hotkey_service.set_callbacks(
@@ -62,12 +63,14 @@ class AppController:
         on_transcription_complete: Callable[[str], None] = None,
         on_amplitude: Callable[[float], None] = None,
         on_error: Callable[[str], None] = None,
+        on_model_loading: Callable[[], None] = None,
     ):
         self._on_recording_start = on_recording_start
         self._on_recording_stop = on_recording_stop
         self._on_transcription_complete = on_transcription_complete
         self._on_amplitude = on_amplitude
         self._on_error = on_error
+        self._on_model_loading = on_model_loading
 
     def initialize(self):
         """Initialize the app - start hotkey listener (model loads lazily on first use)."""
@@ -125,6 +128,11 @@ class AppController:
         def transcribe():
             try:
                 settings = self.settings_service.get_settings()
+
+                # Notify UI if model needs to be loaded (first use)
+                if not self.transcription_service.is_model_loaded():
+                    if self._on_model_loading:
+                        self._on_model_loading()
 
                 # Lazy load model if needed
                 info(f"Ensuring model loaded: {settings.model} on device: {settings.device}")
@@ -361,6 +369,11 @@ class AppController:
 
         try:
             settings = self.settings_service.get_settings()
+
+            # Notify UI if model needs to be loaded (first use)
+            if not self.transcription_service.is_model_loaded():
+                if self._on_model_loading:
+                    self._on_model_loading()
 
             # Lazy load model if needed
             info(f"Ensuring model loaded: {settings.model} on device: {settings.device}")

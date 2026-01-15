@@ -99,6 +99,10 @@ class TranscriptionService:
     def is_loading(self) -> bool:
         return self._loading
 
+    def is_model_loaded(self) -> bool:
+        """Check if a model is currently loaded."""
+        return self._model is not None
+
     def get_current_model(self) -> Optional[str]:
         return self._current_model_name
 
