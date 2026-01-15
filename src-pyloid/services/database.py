@@ -241,6 +241,42 @@ class DatabaseService:
         conn.commit()
         conn.close()
 
+    def bulk_delete_history(self, history_ids: list[int]):
+        """Delete multiple history entries by IDs with transaction support."""
+        if not history_ids:
+            return
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Fetch entries to get audio file paths
+            placeholders = ",".join("?" * len(history_ids))
+            cursor.execute(
+                f"SELECT id, audio_relpath FROM history WHERE id IN ({placeholders})",
+                history_ids
+            )
+            rows = cursor.fetchall()
+
+            # Delete audio files for entries that have them
+            for row in rows:
+                if row["audio_relpath"]:
+                    self._delete_audio_file(row["audio_relpath"])
+
+            # Delete DB records in transaction
+            cursor.execute(
+                f"DELETE FROM history WHERE id IN ({placeholders})",
+                history_ids
+            )
+
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            debug(f"Failed to bulk delete history: {exc}")
+            raise
+        finally:
+            conn.close()
+
     def clear_old_history(self, days: int):
         """Clear history older than specified days. -1 means keep forever."""
         if days < 0:
