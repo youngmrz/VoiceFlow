@@ -244,6 +244,13 @@ async def delete_history(history_id: int):
 
 
 @server.method()
+async def bulk_delete_history(history_ids: list[int]):
+    controller = get_controller()
+    controller.bulk_delete_history(history_ids)
+    return {"success": True}
+
+
+@server.method()
 async def copy_to_clipboard(text: str):
     controller = get_controller()
     controller.clipboard_service.copy_to_clipboard(text)
