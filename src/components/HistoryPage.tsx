@@ -24,6 +24,10 @@ export function HistoryPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioMeta, setAudioMeta] = useState<{ fileName?: string; mime?: string; durationMs?: number } | null>(null);
   const [loadingAudioFor, setLoadingAudioFor] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Derived state for selection
+  const hasSelection = selectedIds.size > 0;
 
   // Reusing the same load logic as HomePage for consistency
   const loadHistory = async (searchQuery?: string) => {
@@ -103,6 +107,27 @@ export function HistoryPage() {
     } finally {
       setLoadingAudioFor(null);
     }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = new Set(history.map((entry) => entry.id));
+    setSelectedIds(allIds);
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
   };
 
   const groupedHistory = groupByDate(history);
