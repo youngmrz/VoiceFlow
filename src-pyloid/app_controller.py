@@ -14,6 +14,7 @@ from services.audio import AudioService
 from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
+from services.resource_monitor import ResourceMonitor
 from services.logger import info, error, debug, warning, exception
 from services.gpu import is_cuda_available, get_gpu_name, get_cuda_compute_types, validate_device_setting, get_cudnn_status, reset_cuda_cache, has_nvidia_gpu
 from services.cudnn_downloader import download_cudnn, is_cuda_libs_installed, get_download_size_mb, get_download_progress, clear_cuda_dir
@@ -35,6 +36,7 @@ class AppController:
         self.transcription_service = TranscriptionService()
         self.hotkey_service = HotkeyService()
         self.clipboard_service = ClipboardService()
+        self.resource_monitor = ResourceMonitor()
 
         # Popup enabled state (disabled during onboarding)
         self._popup_enabled = True
@@ -294,6 +296,13 @@ class AppController:
             "currentComputeType": self.transcription_service.get_current_compute_type(),
             "cudnnAvailable": cudnn_available,
             "cudnnMessage": cudnn_message,
+        }
+
+    def get_resource_usage(self) -> dict:
+        """Get current resource usage for the frontend."""
+        return {
+            "cpuPercent": self.resource_monitor.get_cpu_percent(),
+            "memoryMb": self.resource_monitor.get_memory_mb(),
         }
 
     def validate_device(self, device: str) -> dict:

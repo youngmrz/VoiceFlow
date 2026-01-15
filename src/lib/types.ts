@@ -13,6 +13,8 @@ export interface Settings {
   holdHotkeyEnabled: boolean;
   toggleHotkey: string;
   toggleHotkeyEnabled: boolean;
+  // Resource settings
+  modelIdleTimeout: number;
 }
 
 export interface HistoryEntry {
@@ -118,4 +120,9 @@ export interface CudnnDownloadProgress {
   complete: boolean;
   success: boolean;
   status: string;
+}
+
+export interface ResourceUsage {
+  cpuPercent: number;
+  memoryMb: number;
 }

@@ -24,11 +24,14 @@ import {
   Hand,
   ToggleRight,
   HardDrive,
+  Timer,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Settings, Options, GpuInfo } from "@/lib/types";
 import { ModelDownloadModal } from "./ModelDownloadModal";
 import { HotkeyCapture } from "./HotkeyCapture";
+import { ResourceMonitor } from "./ResourceMonitor";
+import { Slider } from "@/components/ui/slider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -614,7 +617,55 @@ export function SettingsTab() {
             )}
           </BentoSettingCard>
 
-          {/* 10. Danger Zone (Span 4) */}
+          {/* 10. Model Idle Timeout (Span 6) */}
+          <BentoSettingCard
+            title="Model Idle Timeout"
+            description="Auto-unload model after inactivity to save memory"
+            icon={Timer}
+            className="md:col-span-6 lg:col-span-6"
+          >
+            <div className="mt-auto space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {settings.modelIdleTimeout < 60
+                    ? `${settings.modelIdleTimeout} seconds`
+                    : `${Math.round(settings.modelIdleTimeout / 60)} minutes`}
+                </span>
+                <span className="text-xs text-muted-foreground/60">
+                  30s - 30min
+                </span>
+              </div>
+              <Slider
+                value={[settings.modelIdleTimeout]}
+                onValueChange={([value]) =>
+                  updateSetting("modelIdleTimeout", value)
+                }
+                min={30}
+                max={1800}
+                step={30}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground">
+                Model will unload after this period of inactivity to reduce memory usage. Next recording will load it automatically.
+              </p>
+            </div>
+          </BentoSettingCard>
+
+          {/* 11. Resource Monitor (Span 4) */}
+          <div className="md:col-span-6 lg:col-span-4">
+            <BentoSettingCard
+              title="Resource Monitor"
+              description="Current application resource usage"
+              icon={Cpu}
+              className="h-full"
+            >
+              <div className="mt-auto">
+                <ResourceMonitor />
+              </div>
+            </BentoSettingCard>
+          </div>
+
+          {/* 12. Danger Zone (Span 4) */}
           <DangerZoneCard />
         </div>
       </div>
