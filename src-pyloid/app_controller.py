@@ -178,8 +178,8 @@ class AppController:
                         self._on_transcription_complete("")
 
                 # Start idle timer to auto-unload model after inactivity
-                # Default timeout: 300 seconds (5 minutes)
-                self.transcription_service.start_idle_timer(timeout_seconds=300)
+                # Use configured timeout from settings
+                self.transcription_service.start_idle_timer(timeout_seconds=settings.model_idle_timeout)
 
             except Exception as e:
                 exception(f"Transcription error: {e}")
@@ -213,6 +213,7 @@ class AppController:
             "holdHotkeyEnabled": settings.hold_hotkey_enabled,
             "toggleHotkey": settings.toggle_hotkey,
             "toggleHotkeyEnabled": settings.toggle_hotkey_enabled,
+            "modelIdleTimeout": settings.model_idle_timeout,
         }
 
     def update_settings(self, **kwargs) -> dict:
@@ -225,6 +226,8 @@ class AppController:
             mapped["onboarding_complete"] = kwargs["onboardingComplete"]
         if "saveAudioToHistory" in kwargs:
             mapped["save_audio_to_history"] = kwargs["saveAudioToHistory"]
+        if "modelIdleTimeout" in kwargs:
+            mapped["model_idle_timeout"] = kwargs["modelIdleTimeout"]
         # Hotkey settings (camelCase to snake_case)
         if "holdHotkey" in kwargs:
             mapped["hold_hotkey"] = kwargs["holdHotkey"]
