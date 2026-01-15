@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { base64ToBlobUrl, revokeUrl, isInvalidAudioPayload } from "@/lib/audio";
 import {
   Dialog,
@@ -192,7 +193,31 @@ export function HistoryPage() {
                </div>
             </div>
           ) : (
-            <div className="space-y-12">
+            <div className="space-y-8">
+              {/* Selection Toolbar */}
+              <div className="flex items-center gap-3 p-4 bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAll}
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearSelection}
+                  disabled={selectedIds.size === 0}
+                >
+                  Clear Selection
+                </Button>
+                {selectedIds.size > 0 && (
+                  <span className="text-sm text-muted-foreground ml-2">
+                    {selectedIds.size} selected
+                  </span>
+                )}
+              </div>
+
               {Object.entries(groupedHistory).map(([dateLabel, entries]) => (
                 <div key={dateLabel} className="space-y-4">
                   <div className="flex items-center gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
@@ -204,6 +229,7 @@ export function HistoryPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {entries.map((entry) => {
                       const hasAudio = !!entry.has_audio;
+                      const isSelected = selectedIds.has(entry.id);
                       return (
                         <Card
                           key={entry.id}
@@ -211,6 +237,10 @@ export function HistoryPage() {
                         >
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleSelect(entry.id)}
+                              />
                               <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
                                 <Clock className="w-3 h-3" />
                                 {formatTime(entry.created_at)}
