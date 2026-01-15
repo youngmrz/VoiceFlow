@@ -131,6 +131,20 @@ export function HistoryPage() {
     setSelectedIds(new Set());
   };
 
+  const handleDeleteSelected = async () => {
+    const count = selectedIds.size;
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) => api.deleteHistory(id))
+      );
+      setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} transcription${count === 1 ? "" : "s"} deleted`);
+    } catch (error) {
+      toast.error("Failed to delete selected transcriptions");
+    }
+  };
+
   const groupedHistory = groupByDate(history);
   const durationMs = audioMeta?.durationMs;
 
@@ -167,6 +181,47 @@ export function HistoryPage() {
              />
           </div>
         </div>
+
+        {/* Selection Toolbar */}
+        {hasSelection && (
+          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox checked={true} className="border-primary" />
+                <span className="text-sm font-medium">
+                  {selectedIds.size} item{selectedIds.size === 1 ? "" : "s"} selected
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAll}
+                className="h-9"
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={deselectAll}
+                className="h-9"
+              >
+                Deselect All
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelected}
+                className="h-9"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedIds.size})
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <section className="min-h-[500px]">
