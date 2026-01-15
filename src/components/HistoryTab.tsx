@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -111,6 +112,33 @@ export function HistoryTab() {
            </div>
         </div>
 
+        {/* Selection Toolbar */}
+        {!loading && history.length > 0 && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-secondary/30 backdrop-blur-sm border border-border/50">
+            <span className="text-sm font-medium text-muted-foreground">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select items"}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                disabled={selectedIds.size === history.length}
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearSelection}
+                disabled={selectedIds.size === 0}
+              >
+                Clear Selection
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="min-h-[500px]">
           {loading ? (
@@ -159,10 +187,17 @@ export function HistoryTab() {
                           className="group flex flex-col h-full bg-card/60 backdrop-blur-sm border-border/50 shadow-sm hover:bg-card hover:border-primary/20 transition-colors duration-150"
                         >
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                             <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
-                                <Clock className="w-3 h-3" />
-                                {formatTime(entry.created_at)}
-                             </span>
+                             <div className="flex items-center gap-3">
+                                <Checkbox
+                                  checked={selectedIds.has(entry.id)}
+                                  onCheckedChange={() => handleToggleSelect(entry.id)}
+                                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
+                                <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
+                                   <Clock className="w-3 h-3" />
+                                   {formatTime(entry.created_at)}
+                                </span>
+                             </div>
                              <div className="opacity-0 group-hover:opacity-100 transition-all flex gap-1">
                                 <Button
                                   variant="ghost"
