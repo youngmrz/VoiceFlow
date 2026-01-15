@@ -142,12 +142,13 @@ export function HistoryPage() {
   const handleBulkDelete = async () => {
     const idsToDelete = Array.from(selectedIds);
     try {
-      await Promise.all(idsToDelete.map((id) => api.deleteHistory(id)));
+      await api.bulkDeleteHistory(idsToDelete);
       setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
       setSelectedIds(new Set());
       setShowDeleteConfirm(false);
       toast.success(`Deleted ${idsToDelete.length} transcription${idsToDelete.length > 1 ? 's' : ''}`);
     } catch (error) {
+      console.error("Failed to delete selected transcriptions:", error);
       toast.error("Failed to delete selected transcriptions");
     }
   };
