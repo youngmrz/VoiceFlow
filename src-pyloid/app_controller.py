@@ -36,10 +36,6 @@ class AppController:
         self.hotkey_service = HotkeyService()
         self.clipboard_service = ClipboardService()
 
-        # Model loading state
-        self._model_loaded = False
-        self._model_loading = False
-
         # Popup enabled state (disabled during onboarding)
         self._popup_enabled = True
 
@@ -363,20 +359,13 @@ class AppController:
 
         info(f"Test recorded {len(audio)} samples")
 
-        # Wait for model if needed
-        wait_time = 0
-        while not self._model_loaded and wait_time < 10:
-            if not self._model_loading:
-                return {"success": False, "error": "Model not loaded", "transcript": ""}
-            debug(f"Waiting for model... ({wait_time}s)")
-            time.sleep(0.5)
-            wait_time += 0.5
-
-        if not self._model_loaded:
-            return {"success": False, "error": "Model loading timeout", "transcript": ""}
-
         try:
             settings = self.settings_service.get_settings()
+
+            # Lazy load model if needed
+            info(f"Ensuring model loaded: {settings.model} on device: {settings.device}")
+            self.transcription_service.ensure_model_loaded(settings.model, settings.device)
+
             text = self.transcription_service.transcribe(
                 audio,
                 language=settings.language,
