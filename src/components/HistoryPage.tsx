@@ -142,7 +142,7 @@ export function HistoryPage() {
     setSelectedIds(new Set());
   };
 
-  const confirmDeleteSelected = async () => {
+  const handleBulkDelete = async () => {
     const count = selectedIds.size;
     try {
       await Promise.all(
@@ -153,6 +153,7 @@ export function HistoryPage() {
       setShowDeleteDialog(false);
       toast.success(`${count} transcription${count === 1 ? "" : "s"} deleted`);
     } catch (error) {
+      console.error("Failed to delete:", error);
       toast.error("Failed to delete selected transcriptions");
     }
   };
@@ -424,7 +425,7 @@ export function HistoryPage() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDeleteSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>
