@@ -78,6 +78,20 @@ class TranscriptionService:
             finally:
                 self._loading = False
 
+    def ensure_model_loaded(self, model_name: str = "tiny", device_preference: str = "auto"):
+        """Ensure model is loaded, loading it if necessary.
+
+        This enables lazy loading - the model is only loaded when first needed.
+        If the model is already loaded with the requested configuration, this is a no-op.
+
+        Args:
+            model_name: Name of the Whisper model
+            device_preference: "auto", "cpu", or "cuda"
+        """
+        # load_model() already checks if model is loaded with same config
+        # and skips reloading if so (see lines 38-42)
+        self.load_model(model_name, device_preference)
+
     def is_loading(self) -> bool:
         return self._loading
 
