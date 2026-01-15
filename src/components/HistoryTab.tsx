@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -13,6 +23,7 @@ export function HistoryTab() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const loadHistory = async (searchQuery?: string) => {
     setLoading(true);
@@ -85,6 +96,25 @@ export function HistoryTab() {
     setSelectedIds(new Set());
   };
 
+  const handleBulkDelete = async () => {
+    try {
+      // Delete all selected entries
+      await Promise.all(
+        Array.from(selectedIds).map((id) => api.deleteHistory(id))
+      );
+      // Remove from local state
+      setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
+      // Clear selection
+      setSelectedIds(new Set());
+      // Close dialog
+      setShowDeleteDialog(false);
+      // Show success message
+      toast.success(`${selectedIds.size} transcription${selectedIds.size > 1 ? "s" : ""} deleted`);
+    } catch (error) {
+      toast.error("Failed to delete transcriptions");
+    }
+  };
+
   const groupedHistory = groupByDate(history);
 
   return (
@@ -135,6 +165,16 @@ export function HistoryTab() {
               >
                 Clear Selection
               </Button>
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete ({selectedIds.size})
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -236,6 +276,28 @@ export function HistoryTab() {
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transcriptions</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedIds.size} transcription{selectedIds.size > 1 ? "s" : ""}?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
