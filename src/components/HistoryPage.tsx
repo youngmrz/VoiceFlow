@@ -14,6 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -26,6 +36,7 @@ export function HistoryPage() {
   const [audioMeta, setAudioMeta] = useState<{ fileName?: string; mime?: string; durationMs?: number } | null>(null);
   const [loadingAudioFor, setLoadingAudioFor] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Derived state for selection
   const hasSelection = selectedIds.size > 0;
@@ -131,7 +142,7 @@ export function HistoryPage() {
     setSelectedIds(new Set());
   };
 
-  const handleDeleteSelected = async () => {
+  const confirmDeleteSelected = async () => {
     const count = selectedIds.size;
     try {
       await Promise.all(
@@ -139,10 +150,15 @@ export function HistoryPage() {
       );
       setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
       setSelectedIds(new Set());
+      setShowDeleteDialog(false);
       toast.success(`${count} transcription${count === 1 ? "" : "s"} deleted`);
     } catch (error) {
       toast.error("Failed to delete selected transcriptions");
     }
+  };
+
+  const handleDeleteSelected = () => {
+    setShowDeleteDialog(true);
   };
 
   const groupedHistory = groupByDate(history);
@@ -397,6 +413,23 @@ export function HistoryPage() {
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Selected Transcriptions?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to permanently delete {selectedIds.size} transcription{selectedIds.size === 1 ? "" : "s"}. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDeleteSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
