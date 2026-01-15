@@ -103,9 +103,7 @@ export function HistoryTab() {
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     try {
-      await Promise.all(
-        Array.from(selectedIds).map((id) => api.deleteHistory(id))
-      );
+      await api.deleteHistoryBulk(Array.from(selectedIds));
       setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
       setSelectedIds(new Set());
       setShowDeleteDialog(false);
