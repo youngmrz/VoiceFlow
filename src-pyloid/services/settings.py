@@ -48,6 +48,7 @@ class Settings:
     onboarding_complete: bool = False
     microphone: int = -1  # -1 = default device, otherwise device id
     save_audio_to_history: bool = False
+    disable_history_storage: bool = False
     # Hotkey settings
     hold_hotkey: str = "ctrl+win"
     hold_hotkey_enabled: bool = True
@@ -74,6 +75,7 @@ class SettingsService:
             onboarding_complete=self.db.get_setting("onboarding_complete", "false") == "true",
             microphone=int(self.db.get_setting("microphone", "-1")),
             save_audio_to_history=self.db.get_setting("save_audio_to_history", "false") == "true",
+            disable_history_storage=self.db.get_setting("disable_history_storage", "false") == "true",
             # Hotkey settings
             hold_hotkey=self.db.get_setting("hold_hotkey", "ctrl+win"),
             hold_hotkey_enabled=self.db.get_setting("hold_hotkey_enabled", "true") == "true",
@@ -95,6 +97,7 @@ class SettingsService:
         onboarding_complete: Optional[bool] = None,
         microphone: Optional[int] = None,
         save_audio_to_history: Optional[bool] = None,
+        disable_history_storage: Optional[bool] = None,
         hold_hotkey: Optional[str] = None,
         hold_hotkey_enabled: Optional[bool] = None,
         toggle_hotkey: Optional[str] = None,
@@ -118,6 +121,8 @@ class SettingsService:
             self.db.set_setting("microphone", str(microphone))
         if save_audio_to_history is not None:
             self.db.set_setting("save_audio_to_history", "true" if save_audio_to_history else "false")
+        if disable_history_storage is not None:
+            self.db.set_setting("disable_history_storage", "true" if disable_history_storage else "false")
         # Hotkey settings - normalize before storing for consistent format
         if hold_hotkey is not None:
             self.db.set_setting("hold_hotkey", normalize_hotkey(hold_hotkey))
