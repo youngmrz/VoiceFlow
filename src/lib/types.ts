@@ -8,6 +8,7 @@ export interface Settings {
   onboardingComplete: boolean;
   microphone: number;
   saveAudioToHistory: boolean;
+  disableHistoryStorage: boolean;
   // Hotkey settings
   holdHotkey: string;
   holdHotkeyEnabled: boolean;
