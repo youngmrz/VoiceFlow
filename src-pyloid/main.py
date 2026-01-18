@@ -25,6 +25,7 @@ class ThreadSafeSignals(QObject):
     recording_stopped = Signal()
     transcription_complete = Signal(str)
     amplitude_changed = Signal(float)
+    model_loading_started = Signal()
 
 
 # Global signal emitter instance (created after QApplication)
@@ -366,6 +367,16 @@ def on_amplitude(amp: float):
     if _signals:
         _signals.amplitude_changed.emit(amp)
 
+def _on_model_loading_slot():
+    """Slot: Actual model loading handler - runs on main thread via signal."""
+    log.info("Model loading started - showing loading indicator")
+    send_popup_event('popup-state', {'state': 'loading'})
+
+def on_model_loading():
+    """Called from transcription thread - emits signal to main Qt thread."""
+    if _signals:
+        _signals.model_loading_started.emit()
+
 
 def on_onboarding_complete():
     """Called when user completes onboarding - hide main window, show popup."""
@@ -424,6 +435,7 @@ _signals.recording_started.connect(_on_recording_start_slot, Qt.QueuedConnection
 _signals.recording_stopped.connect(_on_recording_stop_slot, Qt.QueuedConnection)
 _signals.transcription_complete.connect(_on_transcription_complete_slot, Qt.QueuedConnection)
 _signals.amplitude_changed.connect(_on_amplitude_slot, Qt.QueuedConnection)
+_signals.model_loading_started.connect(_on_model_loading_slot, Qt.QueuedConnection)
 
 # Set UI callbacks
 controller.set_ui_callbacks(
@@ -431,6 +443,7 @@ controller.set_ui_callbacks(
     on_recording_stop=on_recording_stop,
     on_transcription_complete=on_transcription_complete,
     on_amplitude=on_amplitude,
+    on_model_loading=on_model_loading,
 )
 
 # Initialize controller (load model, start hotkey listener)

@@ -1,6 +1,6 @@
 import { useEffect, useState, useLayoutEffect } from "react";
 
-type PopupState = "idle" | "recording" | "processing";
+type PopupState = "idle" | "recording" | "processing" | "loading";
 
 export function Popup() {
   const [state, setState] = useState<PopupState>("idle");
@@ -107,6 +107,35 @@ export function Popup() {
                 height: "4px",
                 borderRadius: "50%",
                 background: "rgba(255, 255, 255, 0.7)",
+                animation: "fade 1s ease-in-out infinite",
+                animationDelay: `${i * 0.2}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* LOADING: Loading model indicator */}
+      {state === "loading" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "8px 12px",
+            borderRadius: "12px",
+            background: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: "4px",
+                height: "4px",
+                borderRadius: "50%",
+                background: "rgba(59, 130, 246, 0.7)",
                 animation: "fade 1s ease-in-out infinite",
                 animationDelay: `${i * 0.2}s`,
               }}

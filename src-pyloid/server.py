@@ -60,6 +60,7 @@ async def update_settings(
     holdHotkeyEnabled: Optional[bool] = None,
     toggleHotkey: Optional[str] = None,
     toggleHotkeyEnabled: Optional[bool] = None,
+    modelIdleTimeout: Optional[int] = None,
 ):
     controller = get_controller()
     kwargs = {}
@@ -90,6 +91,9 @@ async def update_settings(
         kwargs["toggleHotkey"] = toggleHotkey
     if toggleHotkeyEnabled is not None:
         kwargs["toggleHotkeyEnabled"] = toggleHotkeyEnabled
+    # Resource settings
+    if modelIdleTimeout is not None:
+        kwargs["modelIdleTimeout"] = modelIdleTimeout
 
     # Check if onboarding was already complete before this update
     old_settings = controller.get_settings()
@@ -159,6 +163,13 @@ async def get_gpu_info():
     """Get GPU/CUDA information."""
     controller = get_controller()
     return controller.get_gpu_info()
+
+
+@server.method()
+async def get_resource_usage():
+    """Get current CPU and memory usage."""
+    controller = get_controller()
+    return controller.get_resource_usage()
 
 
 @server.method()

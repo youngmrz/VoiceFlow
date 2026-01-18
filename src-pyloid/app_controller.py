@@ -14,6 +14,7 @@ from services.audio import AudioService
 from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
+from services.resource_monitor import ResourceMonitor
 from services.logger import info, error, debug, warning, exception
 from services.gpu import is_cuda_available, get_gpu_name, get_cuda_compute_types, validate_device_setting, get_cudnn_status, reset_cuda_cache, has_nvidia_gpu
 from services.cudnn_downloader import download_cudnn, is_cuda_libs_installed, get_download_size_mb, get_download_progress, clear_cuda_dir
@@ -35,10 +36,7 @@ class AppController:
         self.transcription_service = TranscriptionService()
         self.hotkey_service = HotkeyService()
         self.clipboard_service = ClipboardService()
-
-        # Model loading state
-        self._model_loaded = False
-        self._model_loading = False
+        self.resource_monitor = ResourceMonitor()
 
         # Popup enabled state (disabled during onboarding)
         self._popup_enabled = True
@@ -49,6 +47,7 @@ class AppController:
         self._on_transcription_complete: Optional[Callable[[str], None]] = None
         self._on_amplitude: Optional[Callable[[float], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
+        self._on_model_loading: Optional[Callable[[], None]] = None
 
         # Setup hotkey callbacks
         self.hotkey_service.set_callbacks(
@@ -66,37 +65,22 @@ class AppController:
         on_transcription_complete: Callable[[str], None] = None,
         on_amplitude: Callable[[float], None] = None,
         on_error: Callable[[str], None] = None,
+        on_model_loading: Callable[[], None] = None,
     ):
         self._on_recording_start = on_recording_start
         self._on_recording_stop = on_recording_stop
         self._on_transcription_complete = on_transcription_complete
         self._on_amplitude = on_amplitude
         self._on_error = on_error
+        self._on_model_loading = on_model_loading
 
     def initialize(self):
-        """Initialize the app - load model and start hotkey listener."""
+        """Initialize the app - start hotkey listener (model loads lazily on first use)."""
         settings = self.settings_service.get_settings()
 
         # Set initial microphone
         mic_id = settings.microphone if settings.microphone >= 0 else None
         self.audio_service.set_device(mic_id)
-
-        # Load whisper model in background
-        def load_model():
-            self._model_loading = True
-            try:
-                info(f"Loading model: {settings.model} on device: {settings.device}...")
-                self.transcription_service.load_model(settings.model, settings.device)
-                self._model_loaded = True
-                info("Model loaded successfully!")
-            except Exception as e:
-                exception(f"Failed to load model: {e}")
-                if self._on_error:
-                    self._on_error(f"Failed to load model: {e}")
-            finally:
-                self._model_loading = False
-
-        threading.Thread(target=load_model, daemon=True).start()
 
         # Configure hotkey service with settings
         self.hotkey_service.configure(
@@ -145,27 +129,18 @@ class AppController:
         # Transcribe in background
         def transcribe():
             try:
-                # Wait for model to be loaded (with timeout)
-                wait_time = 0
-                while not self._model_loaded and wait_time < 30:
-                    if not self._model_loading:
-                        warning("Model not loaded and not loading, skipping transcription")
-                        if self._on_transcription_complete:
-                            self._on_transcription_complete("")
-                        return
-                    info(f"Waiting for model to load... ({wait_time}s)")
-                    time.sleep(1)
-                    wait_time += 1
-
-                if not self._model_loaded:
-                    error("Model load timeout, skipping transcription")
-                    if self._on_transcription_complete:
-                        self._on_transcription_complete("")
-                    return
-
                 settings = self.settings_service.get_settings()
-                info(f"Transcribing with language: {settings.language}")
 
+                # Notify UI if model needs to be loaded (first use)
+                if not self.transcription_service.is_model_loaded():
+                    if self._on_model_loading:
+                        self._on_model_loading()
+
+                # Lazy load model if needed
+                info(f"Ensuring model loaded: {settings.model} on device: {settings.device}")
+                self.transcription_service.ensure_model_loaded(settings.model, settings.device)
+
+                info(f"Transcribing with language: {settings.language}")
                 text = self.transcription_service.transcribe(
                     audio,
                     language=settings.language,
@@ -202,6 +177,10 @@ class AppController:
                     if self._on_transcription_complete:
                         self._on_transcription_complete("")
 
+                # Start idle timer to auto-unload model after inactivity
+                # Use configured timeout from settings
+                self.transcription_service.start_idle_timer(timeout_seconds=settings.model_idle_timeout)
+
             except Exception as e:
                 exception(f"Transcription error: {e}")
                 if self._on_error:
@@ -234,6 +213,7 @@ class AppController:
             "holdHotkeyEnabled": settings.hold_hotkey_enabled,
             "toggleHotkey": settings.toggle_hotkey,
             "toggleHotkeyEnabled": settings.toggle_hotkey_enabled,
+            "modelIdleTimeout": settings.model_idle_timeout,
         }
 
     def update_settings(self, **kwargs) -> dict:
@@ -246,6 +226,8 @@ class AppController:
             mapped["onboarding_complete"] = kwargs["onboardingComplete"]
         if "saveAudioToHistory" in kwargs:
             mapped["save_audio_to_history"] = kwargs["saveAudioToHistory"]
+        if "modelIdleTimeout" in kwargs:
+            mapped["model_idle_timeout"] = kwargs["modelIdleTimeout"]
         # Hotkey settings (camelCase to snake_case)
         if "holdHotkey" in kwargs:
             mapped["hold_hotkey"] = kwargs["holdHotkey"]
@@ -262,12 +244,6 @@ class AppController:
 
         debug(f"Mapped settings: {mapped}")
         settings = self.settings_service.update_settings(**mapped)
-
-        # Reload model if model or device changed
-        if "model" in mapped or "device" in mapped:
-            def reload():
-                self.transcription_service.load_model(settings.model, settings.device)
-            threading.Thread(target=reload, daemon=True).start()
 
         # Update microphone if changed
         if "microphone" in mapped:
@@ -323,6 +299,13 @@ class AppController:
             "currentComputeType": self.transcription_service.get_current_compute_type(),
             "cudnnAvailable": cudnn_available,
             "cudnnMessage": cudnn_message,
+        }
+
+    def get_resource_usage(self) -> dict:
+        """Get current resource usage for the frontend."""
+        return {
+            "cpuPercent": self.resource_monitor.get_cpu_percent(),
+            "memoryMb": self.resource_monitor.get_memory_mb(),
         }
 
     def validate_device(self, device: str) -> dict:
@@ -390,20 +373,18 @@ class AppController:
 
         info(f"Test recorded {len(audio)} samples")
 
-        # Wait for model if needed
-        wait_time = 0
-        while not self._model_loaded and wait_time < 10:
-            if not self._model_loading:
-                return {"success": False, "error": "Model not loaded", "transcript": ""}
-            debug(f"Waiting for model... ({wait_time}s)")
-            time.sleep(0.5)
-            wait_time += 0.5
-
-        if not self._model_loaded:
-            return {"success": False, "error": "Model loading timeout", "transcript": ""}
-
         try:
             settings = self.settings_service.get_settings()
+
+            # Notify UI if model needs to be loaded (first use)
+            if not self.transcription_service.is_model_loaded():
+                if self._on_model_loading:
+                    self._on_model_loading()
+
+            # Lazy load model if needed
+            info(f"Ensuring model loaded: {settings.model} on device: {settings.device}")
+            self.transcription_service.ensure_model_loaded(settings.model, settings.device)
+
             text = self.transcription_service.transcribe(
                 audio,
                 language=settings.language,

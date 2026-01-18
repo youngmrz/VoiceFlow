@@ -46,13 +46,14 @@ Python backend using Pyloid framework with PySide6:
 
 **Services (src-pyloid/services/):**
 - `audio.py` - Microphone recording using sounddevice, streams amplitude for visualizer
-- `transcription.py` - faster-whisper model loading and transcription
+- `transcription.py` - faster-whisper model loading and transcription with lazy loading support
 - `hotkey.py` - Global hotkey listener using keyboard library
 - `clipboard.py` - Clipboard operations and paste-at-cursor using pyautogui
-- `settings.py` - Settings management with defaults
+- `settings.py` - Settings management with defaults, includes `model_idle_timeout` configuration
 - `database.py` - SQLite database for settings and history (stored at ~/.VoiceFlow/VoiceFlow.db)
 - `logger.py` - Domain-based logging with hybrid format `[timestamp] [LEVEL] [domain] message | {json}`. Supports domains: model, audio, hotkey, settings, database, clipboard, window. Configured with 100MB log rotation.
 - `model_manager.py` - Whisper model download/cache management using huggingface_hub. Provides download progress tracking (percent, speed, ETA), cancellation via CancelToken, daemon thread execution, and `clear_cache()` to delete only VoiceFlow's faster-whisper models.
+- `resource_monitor.py` - CPU and memory usage tracking using psutil. Provides `get_cpu_percent()`, `get_memory_mb()`, and `get_snapshot()` for resource profiling.
 
 ### Frontend (src/)
 
@@ -66,6 +67,7 @@ React 18 + TypeScript + Vite frontend:
   - `ModelDownloadProgress.tsx` - Download progress UI with progress bar, speed, ETA, and retry support
   - `ModelDownloadModal.tsx` - Dialog wrapper for model downloads triggered from settings
   - `ModelRecoveryModal.tsx` - Startup modal for missing model recovery
+  - `ResourceMonitor.tsx` - Live CPU and memory usage display in Settings tab (polls every 2s)
 
 ### Frontend-Backend Communication
 
@@ -87,10 +89,12 @@ popup_window.invoke('popup-state', {'state': 'recording'})
 3. Popup transitions to "recording" state, shows amplitude visualizer
 4. User releases hotkey
 5. `AudioService.stop_recording` returns audio numpy array
-6. `TranscriptionService.transcribe` runs faster-whisper
-7. `ClipboardService.paste_at_cursor` pastes text
-8. History saved to database
-9. Popup returns to "idle" state
+6. If model not loaded (first use), popup shows "loading" state while `ensure_model_loaded()` loads model
+7. `TranscriptionService.transcribe` runs faster-whisper
+8. `ClipboardService.paste_at_cursor` pastes text
+9. History saved to database
+10. `start_idle_timer(300)` begins countdown to auto-unload model
+11. Popup returns to "idle" state
 
 ### Qt Threading Pattern
 
@@ -119,12 +123,50 @@ For transparent popup windows on Windows:
 6. On completion, model is cached in huggingface cache directory
 7. Turbo model uses `mobiuslabsgmbh/faster-whisper-large-v3-turbo` (same as faster-whisper internal mapping)
 
+### Resource Optimization and Lazy Loading
+
+VoiceFlow uses lazy loading to minimize idle resource usage (<20 MB memory, <1% CPU when idle):
+
+**Lazy Model Loading:**
+- Model is NOT loaded on application startup
+- `TranscriptionService._model` is `None` initially
+- `ensure_model_loaded()` loads model on-demand before first transcription
+- Loading triggers "loading" popup state with blue indicator
+- First-use latency: 2-5 seconds for tiny model (acceptable trade-off for 71-99% memory savings)
+
+**Auto-Unload Mechanism:**
+- `start_idle_timer(timeout_seconds)` starts countdown after each transcription
+- Default timeout: 300 seconds (5 minutes), configurable via `model_idle_timeout` setting
+- Timer runs in daemon thread using `threading.Timer` pattern
+- `_on_idle_timeout()` calls `unload_model()` to free memory
+- Timer is cancelled if model is used again before timeout expires
+
+**Settings Integration:**
+- `model_idle_timeout` field in Settings (30-1800 seconds range)
+- Persisted in database, configurable via Settings UI slider
+- Frontend shows live resource monitor (CPU%, memory MB) polling every 2 seconds
+- `ResourceMonitor` component displays current usage in Advanced settings section
+
+**Implementation Details:**
+- `TranscriptionService.is_model_loaded()` checks if model is in memory
+- `AppController._handle_hotkey_deactivate()` orchestrates: ensure model loaded -> transcribe -> start idle timer
+- `AppController.stop_test_recording()` also uses lazy loading for onboarding flow
+- When settings change (model/device), old eager reload removed - model loads lazily on next use
+- Shutdown calls `unload_model()` to clean up resources
+
+**Resource Monitoring:**
+- `resource_monitor.py` service uses psutil for CPU and memory tracking
+- `get_cpu_percent()` and `get_memory_mb()` provide current metrics
+- `scripts/measure_idle_resources.py` for profiling and baseline measurements
+- See `docs/profiling/` for performance analysis and optimization results
+
 ## Key Patterns
 
 - **Singleton controller**: `get_controller()` returns singleton `AppController` instance
 - **UI callbacks**: Backend notifies frontend of state changes via callbacks set in `set_ui_callbacks()`
 - **Thread-safe signals**: Qt signals with `QueuedConnection` marshal UI updates from background threads to main thread
 - **Background threads**: Model loading, downloads, and transcription run in daemon threads
+- **Lazy loading**: Models load on-demand via `ensure_model_loaded()`, not at startup. Auto-unload after configurable idle timeout (default 5 min).
 - **Domain logging**: All services use `get_logger(domain)` for structured logging with domains like `model`, `audio`, `hotkey`, etc.
 - **Custom hotkeys**: Supports modifier-only combos (e.g., Ctrl+Win) and standard combos (e.g., Ctrl+R). Frontend captures keys, backend validates and registers.
 - **Path alias**: Frontend uses `@/` for `src/` imports (configured in tsconfig.json and vite.config.ts)

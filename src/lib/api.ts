@@ -1,5 +1,5 @@
 import { rpc } from "pyloid-js";
-import type { Settings, HistoryEntry, Options, Stats, ModelInfo, HotkeyValidation, GpuInfo, DeviceValidation, CudnnDownloadInfo, CudnnDownloadResult, CudnnDownloadProgress } from "./types";
+import type { Settings, HistoryEntry, Options, Stats, ModelInfo, HotkeyValidation, GpuInfo, DeviceValidation, CudnnDownloadInfo, CudnnDownloadResult, CudnnDownloadProgress, ResourceUsage } from "./types";
 
 export const api = {
   async getSettings(): Promise<Settings> {
@@ -111,6 +111,11 @@ export const api = {
 
   async validateDevice(device: string): Promise<DeviceValidation> {
     return rpc.call("validate_device", { device });
+  },
+
+  // Resource monitoring
+  async getResourceUsage(): Promise<ResourceUsage> {
+    return rpc.call("get_resource_usage");
   },
 
   // cuDNN download
