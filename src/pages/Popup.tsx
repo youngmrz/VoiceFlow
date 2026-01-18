@@ -39,16 +39,38 @@ export function Popup() {
       className="w-screen h-screen flex items-center justify-center select-none"
       style={{ background: "transparent" }}
     >
-      {/* IDLE: Tiny pill */}
+      {/* IDLE: Offline badge */}
       {state === "idle" && (
         <div
           style={{
-            width: "32px",
-            height: "4px",
-            borderRadius: "2px",
-            background: "rgba(255, 255, 255, 0.15)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 10px",
+            borderRadius: "12px",
+            background: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(12px)",
           }}
-        />
+        >
+          <div
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "rgba(156, 163, 175, 0.8)",
+            }}
+          />
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: "500",
+              color: "rgba(156, 163, 175, 0.9)",
+              letterSpacing: "0.5px",
+            }}
+          >
+            OFFLINE
+          </span>
+        </div>
       )}
 
       {/* RECORDING: Simple bars */}
