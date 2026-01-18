@@ -4,6 +4,17 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -11,6 +22,11 @@ export function HistoryTab() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Derived state for selection
+  const hasSelection = selectedIds.size > 0;
 
   const loadHistory = async (searchQuery?: string) => {
     setLoading(true);
@@ -63,12 +79,52 @@ export function HistoryTab() {
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = new Set(history.map((entry) => entry.id));
+    setSelectedIds(allIds);
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    try {
+      await api.deleteHistoryBulk(Array.from(selectedIds));
+      setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
+      setSelectedIds(new Set());
+      setShowDeleteDialog(false);
+      toast.success(`${count} transcription${count === 1 ? "" : "s"} deleted`);
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      toast.error("Failed to delete selected transcriptions");
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    setShowDeleteDialog(true);
+  };
+
   const groupedHistory = groupByDate(history);
 
   return (
+    <>
     <div className="min-h-screen w-full bg-background/50">
       <div className="w-full max-w-[1600px] mx-auto p-6 md:p-10 space-y-8">
-        
+
         {/* Header & Search */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
            <div>
@@ -77,7 +133,7 @@ export function HistoryTab() {
                 Browse and manage your past transcriptions.
               </p>
            </div>
-           
+
            <div className="w-full md:w-[400px] relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <Input
@@ -89,6 +145,47 @@ export function HistoryTab() {
               />
            </div>
         </div>
+
+        {/* Selection Toolbar */}
+        {hasSelection && (
+          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox checked={true} className="border-primary" />
+                <span className="text-sm font-medium">
+                  {selectedIds.size} item{selectedIds.size === 1 ? "" : "s"} selected
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAll}
+                className="h-9"
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={deselectAll}
+                className="h-9"
+              >
+                Deselect All
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelected}
+                className="h-9"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedIds.size})
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="min-h-[500px]">
@@ -132,17 +229,36 @@ export function HistoryTab() {
 
                    {/* Grid */}
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {entries.map((entry) => (
+                      {entries.map((entry) => {
+                        const isSelected = selectedIds.has(entry.id);
+                        return (
                         <Card
                           key={entry.id}
-                          className="group flex flex-col h-full bg-card/60 backdrop-blur-sm border-border/50 shadow-sm hover:bg-card hover:border-primary/20 transition-colors duration-150"
+                          className={`group flex flex-col h-full bg-card/60 backdrop-blur-sm shadow-sm transition-all duration-150 ${
+                            isSelected
+                              ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
+                              : "border-border/50 hover:bg-card hover:border-primary/20"
+                          }`}
                         >
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                             <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
-                                <Clock className="w-3 h-3" />
-                                {formatTime(entry.created_at)}
-                             </span>
-                             <div className="opacity-0 group-hover:opacity-100 transition-all flex gap-1">
+                             <div className="flex items-center gap-2">
+                               <div
+                                 className={`transition-opacity ${
+                                   isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                 }`}
+                                 onClick={(e) => e.stopPropagation()}
+                               >
+                                 <Checkbox
+                                   checked={isSelected}
+                                   onCheckedChange={() => toggleSelect(entry.id)}
+                                 />
+                               </div>
+                               <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3" />
+                                  {formatTime(entry.created_at)}
+                               </span>
+                             </div>
+                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                 <Button
                                   variant="ghost"
                                   size="icon-sm"
@@ -172,7 +288,8 @@ export function HistoryTab() {
                              </div>
                           </CardContent>
                         </Card>
-                      ))}
+                        );
+                      })}
                    </div>
                 </div>
               ))}
@@ -181,6 +298,24 @@ export function HistoryTab() {
         </div>
       </div>
     </div>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Selected Transcriptions?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to permanently delete {selectedIds.size} transcription{selectedIds.size === 1 ? "" : "s"}. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

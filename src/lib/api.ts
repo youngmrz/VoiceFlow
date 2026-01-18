@@ -35,6 +35,10 @@ export const api = {
     await rpc.call("delete_history", { history_id: historyId });
   },
 
+  async deleteHistoryBulk(ids: number[]): Promise<void> {
+    await rpc.call("delete_history_bulk", { history_ids: ids });
+  },
+
   async copyToClipboard(text: string): Promise<void> {
     await rpc.call("copy_to_clipboard", { text });
   },

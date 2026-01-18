@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { base64ToBlobUrl, revokeUrl, isInvalidAudioPayload } from "@/lib/audio";
 import {
   Dialog,
@@ -13,6 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/types";
 
@@ -24,6 +35,11 @@ export function HistoryPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioMeta, setAudioMeta] = useState<{ fileName?: string; mime?: string; durationMs?: number } | null>(null);
   const [loadingAudioFor, setLoadingAudioFor] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Derived state for selection
+  const hasSelection = selectedIds.size > 0;
 
   // Reusing the same load logic as HomePage for consistency
   const loadHistory = async (searchQuery?: string) => {
@@ -105,6 +121,45 @@ export function HistoryPage() {
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = new Set(history.map((entry) => entry.id));
+    setSelectedIds(allIds);
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    try {
+      await api.deleteHistoryBulk(Array.from(selectedIds));
+      setHistory((prev) => prev.filter((h) => !selectedIds.has(h.id)));
+      setSelectedIds(new Set());
+      setShowDeleteDialog(false);
+      toast.success(`${count} transcription${count === 1 ? "" : "s"} deleted`);
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      toast.error("Failed to delete selected transcriptions");
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    setShowDeleteDialog(true);
+  };
+
   const groupedHistory = groupByDate(history);
   const durationMs = audioMeta?.durationMs;
 
@@ -141,6 +196,47 @@ export function HistoryPage() {
              />
           </div>
         </div>
+
+        {/* Selection Toolbar */}
+        {hasSelection && (
+          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox checked={true} className="border-primary" />
+                <span className="text-sm font-medium">
+                  {selectedIds.size} item{selectedIds.size === 1 ? "" : "s"} selected
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAll}
+                className="h-9"
+              >
+                Select All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={deselectAll}
+                className="h-9"
+              >
+                Deselect All
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteSelected}
+                className="h-9"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedIds.size})
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <section className="min-h-[500px]">
@@ -182,13 +278,29 @@ export function HistoryPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {entries.map((entry) => {
                       const hasAudio = !!entry.has_audio;
+                      const isSelected = selectedIds.has(entry.id);
                       return (
                         <Card
                           key={entry.id}
-                          className="group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm border-border/50 hover:bg-card hover:border-primary/20 transition-colors duration-150"
+                          className={`group flex flex-col justify-between h-full bg-card/60 backdrop-blur-sm transition-all duration-150 ${
+                            isSelected
+                              ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
+                              : "border-border/50 hover:bg-card hover:border-primary/20"
+                          }`}
                         >
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="flex items-center gap-2">
+                              <div
+                                className={`transition-opacity ${
+                                  isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleSelect(entry.id)}
+                                />
+                              </div>
                               <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded flex items-center gap-1.5">
                                 <Clock className="w-3 h-3" />
                                 {formatTime(entry.created_at)}
@@ -300,6 +412,23 @@ export function HistoryPage() {
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Selected Transcriptions?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to permanently delete {selectedIds.size} transcription{selectedIds.size === 1 ? "" : "s"}. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }

@@ -294,6 +294,10 @@ class AppController:
     def delete_history(self, history_id: int):
         self.db.delete_history(history_id)
 
+    def delete_history_bulk(self, history_ids: list):
+        info(f"Deleting {len(history_ids)} history items")
+        self.db.delete_history_bulk(history_ids)
+
     def get_stats(self) -> dict:
         return self.db.get_stats()
 

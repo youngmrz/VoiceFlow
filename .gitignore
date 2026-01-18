@@ -43,3 +43,6 @@ docs/plans/
 *.spec
 build_error_log.txt
 
+
+# Auto Claude data directory
+.auto-claude/
