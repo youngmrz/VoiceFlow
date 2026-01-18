@@ -178,22 +178,25 @@ class AppController:
                     info("Pasting text at cursor...")
                     self.clipboard_service.paste_at_cursor(text)
 
-                    # Save to history (and audio if enabled)
-                    history_id = self.db.add_history(text)
+                    # Save to history (and audio if enabled) - only if not disabled
+                    if not settings.disable_history_storage:
+                        history_id = self.db.add_history(text)
 
-                    if settings.save_audio_to_history:
-                        try:
-                            audio_meta = self._save_audio_attachment(history_id, audio)
-                            self.db.update_history_audio(
-                                history_id,
-                                audio_relpath=audio_meta["audio_relpath"],
-                                audio_duration_ms=audio_meta["audio_duration_ms"],
-                                audio_size_bytes=audio_meta["audio_size_bytes"],
-                                audio_mime=audio_meta["audio_mime"],
-                            )
-                            info(f"Saved audio attachment for history {history_id}")
-                        except (OSError, wave.Error, sqlite3.Error, ValueError) as exc:
-                            warning(f"Failed to save audio attachment: {exc}")
+                        if settings.save_audio_to_history:
+                            try:
+                                audio_meta = self._save_audio_attachment(history_id, audio)
+                                self.db.update_history_audio(
+                                    history_id,
+                                    audio_relpath=audio_meta["audio_relpath"],
+                                    audio_duration_ms=audio_meta["audio_duration_ms"],
+                                    audio_size_bytes=audio_meta["audio_size_bytes"],
+                                    audio_mime=audio_meta["audio_mime"],
+                                )
+                                info(f"Saved audio attachment for history {history_id}")
+                            except (OSError, wave.Error, sqlite3.Error, ValueError) as exc:
+                                warning(f"Failed to save audio attachment: {exc}")
+                    else:
+                        info("History storage disabled - transcription not saved")
 
                     if self._on_transcription_complete:
                         self._on_transcription_complete(text)
@@ -230,6 +233,7 @@ class AppController:
             "onboardingComplete": settings.onboarding_complete,
             "microphone": settings.microphone,
             "saveAudioToHistory": settings.save_audio_to_history,
+            "disableHistoryStorage": settings.disable_history_storage,
             "holdHotkey": settings.hold_hotkey,
             "holdHotkeyEnabled": settings.hold_hotkey_enabled,
             "toggleHotkey": settings.toggle_hotkey,
@@ -246,6 +250,8 @@ class AppController:
             mapped["onboarding_complete"] = kwargs["onboardingComplete"]
         if "saveAudioToHistory" in kwargs:
             mapped["save_audio_to_history"] = kwargs["saveAudioToHistory"]
+        if "disableHistoryStorage" in kwargs:
+            mapped["disable_history_storage"] = kwargs["disableHistoryStorage"]
         # Hotkey settings (camelCase to snake_case)
         if "holdHotkey" in kwargs:
             mapped["hold_hotkey"] = kwargs["holdHotkey"]
