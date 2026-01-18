@@ -60,6 +60,7 @@ async def update_settings(
     holdHotkeyEnabled: Optional[bool] = None,
     toggleHotkey: Optional[str] = None,
     toggleHotkeyEnabled: Optional[bool] = None,
+    disableHistoryStorage: Optional[bool] = None,
 ):
     controller = get_controller()
     kwargs = {}
@@ -90,6 +91,8 @@ async def update_settings(
         kwargs["toggleHotkey"] = toggleHotkey
     if toggleHotkeyEnabled is not None:
         kwargs["toggleHotkeyEnabled"] = toggleHotkeyEnabled
+    if disableHistoryStorage is not None:
+        kwargs["disableHistoryStorage"] = disableHistoryStorage
 
     # Check if onboarding was already complete before this update
     old_settings = controller.get_settings()
