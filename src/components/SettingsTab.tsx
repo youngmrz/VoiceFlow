@@ -24,6 +24,7 @@ import {
   Hand,
   ToggleRight,
   HardDrive,
+  Shield,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Settings, Options, GpuInfo } from "@/lib/types";
@@ -422,7 +423,41 @@ export function SettingsTab() {
             </p>
           </BentoSettingCard>
 
-          {/* 7. System (Auto Start) (Span 4) */}
+          {/* 7. Privacy (Span 6) */}
+          <BentoSettingCard
+            title="Privacy"
+            description="Your data, your control"
+            icon={Shield}
+            className="md:col-span-6 lg:col-span-6"
+          >
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl bg-secondary/20">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Voice data stays in RAM only. No network transmission. No disk storage unless history is enabled. All processing happens locally on your device.
+                </p>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                <Label
+                  htmlFor="disable-history-storage"
+                  className="font-medium cursor-pointer"
+                >
+                  Disable history storage
+                </Label>
+                <Switch
+                  id="disable-history-storage"
+                  checked={settings.disableHistoryStorage}
+                  onCheckedChange={(checked) =>
+                    updateSetting("disableHistoryStorage", checked)
+                  }
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                When enabled, transcriptions are pasted but never saved to history for maximum privacy.
+              </p>
+            </div>
+          </BentoSettingCard>
+
+          {/* 8. System (Auto Start) (Span 4) */}
           <BentoSettingCard
             title="System"
             description="Startup behavior"
@@ -446,7 +481,7 @@ export function SettingsTab() {
             </div>
           </BentoSettingCard>
 
-          {/* 8. Data Folder (Span 4) */}
+          {/* 9. Data Folder (Span 4) */}
           <BentoSettingCard
             title="Storage"
             description="Local data location"
@@ -464,7 +499,7 @@ export function SettingsTab() {
             </div>
           </BentoSettingCard>
 
-          {/* 8. Keyboard Shortcuts (Full Width) */}
+          {/* 10. Keyboard Shortcuts (Full Width) */}
           <BentoSettingCard
             title="Keyboard Shortcuts"
             description="Customize recording hotkeys"
@@ -540,7 +575,7 @@ export function SettingsTab() {
             </p>
           </div>
 
-          {/* 9. GPU / Device (Span 6) */}
+          {/* 11. GPU / Device (Span 6) */}
           <BentoSettingCard
             title="Compute Device"
             description="Choose CPU or GPU for transcription"
@@ -614,7 +649,7 @@ export function SettingsTab() {
             )}
           </BentoSettingCard>
 
-          {/* 10. Danger Zone (Span 4) */}
+          {/* 12. Danger Zone (Span 4) */}
           <DangerZoneCard />
         </div>
       </div>
